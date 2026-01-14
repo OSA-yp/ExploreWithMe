@@ -1,0 +1,9 @@
+server:
+  port: 8080
+
+logging:
+  level:
+    org.springframework.web.client.RestTemplate: DEBUG
+
+stats-service:
+  url: http://stats-service:9090

@@ -1,0 +1,33 @@
+server:
+  port: 9090
+
+spring:
+  config:
+    activate:
+      on-profile: test
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: always
+  datasource:
+    driverClassName: org.h2.Driver
+    url: jdbc:h2:mem:stat-server
+    username: stat-server
+    password: stat-server
+    hikari:
+      connection-timeout: 3000
+      max-lifetime: 5
+
+logging:
+  level:
+    root: INFO
+  file:
+    name: logs/stats-server.log
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"

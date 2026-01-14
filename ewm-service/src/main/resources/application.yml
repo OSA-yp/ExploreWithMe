@@ -1,0 +1,36 @@
+server:
+  port: 8080
+  error:
+    include-binding-errors: always
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: always
+  datasource:
+    driverClassName: org.postgresql.Driver
+    # url: jdbc:postgresql://localhost:5433/ewm-service
+    url: jdbc:postgresql://ewm-db:5432/ewm-service
+    username: ewm-service
+    password: ewm-service
+    hikari:
+      connection-timeout: 3000
+      max-lifetime: 5
+
+logging:
+  level:
+    root: INFO
+
+ewm:
+  ewm-service:
+    name: ewm-service
+  # stats-server:
+  #   url: http://localhost:9090
+  stats-server:
+    url: http://java-explore-with-me-stats-server-1:9090
