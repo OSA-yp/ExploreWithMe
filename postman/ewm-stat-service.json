@@ -81,9 +81,9 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseUrl}}/hit",
+					"raw": "{{statsBaseUrl}}/hit",
 					"host": [
-						"{{baseUrl}}"
+						"{{statsBaseUrl}}"
 					],
 					"path": [
 						"hit"
@@ -111,19 +111,21 @@
 							"        event = await api.publishEvent(event.id);\r",
 							"        pm.collectionVariables.set(\"uri\", '/events/' + event.id);\r",
 							"\r",
+							"        const baseUrl = pm.collectionVariables.get(\"baseUrl\") || \"http://localhost:8080\";\r",
+							"        const statsBaseUrl = pm.collectionVariables.get(\"statsBaseUrl\") || \"http://localhost:9090\";\r",
 							"        pm.sendRequest({\r",
-							"            url : \"http://localhost:8080/events/\" + event.id,\r",
+							"            url : baseUrl + \"/events/\" + event.id,\r",
 							"            method : \"GET\",\r",
 							"            header: { \"Content-Type\": \"application/json\" }\r",
 							"        }, (error, response) => {\r",
 							"            pm.sendRequest({\r",
-							"                url : \"http://localhost:9090/stats?start=2020-05-05 00:00:00&end=2035-05-05 00:00:00&uris=/events/\" + event.id.toString() + \"&unique=false\",\r",
+							"                url : statsBaseUrl + \"/stats?start=2020-05-05 00:00:00&end=2035-05-05 00:00:00&uris=/events/\" + event.id.toString() + \"&unique=false\",\r",
 							"                method : \"GET\",\r",
 							"                header: { \"Content-Type\": \"application/json\" }\r",
 							"            }, (error, response) => {\r",
 							"                pm.collectionVariables.set('source', response.json());\r",
 							"                pm.sendRequest({\r",
-							"                    url : \"http://localhost:8080/events/\" + event.id,\r",
+							"                    url : baseUrl + \"/events/\" + event.id,\r",
 							"                    method : \"GET\",\r",
 							"                    header: { \"Content-Type\": \"application/json\" }\r",
 							"                });\r",
@@ -189,9 +191,9 @@
 					}
 				],
 				"url": {
-					"raw": "{{baseUrl}}/stats?start=2020-05-05 00:00:00&end=2035-05-05 00:00:00&uris={{uri}}&unique=false",
+					"raw": "{{statsBaseUrl}}/stats?start=2020-05-05 00:00:00&end=2035-05-05 00:00:00&uris={{uri}}&unique=false",
 					"host": [
-						"{{baseUrl}}"
+						"{{statsBaseUrl}}"
 					],
 					"path": [
 						"stats"
@@ -242,18 +244,19 @@
 							"        event2 = await api.publishEvent(event2.id);\r",
 							"        pm.collectionVariables.set(\"uri\", '/events/' + event1.id + '&uris=/events/' + event2.id);\r",
 							"\r",
+							"        const baseUrl = pm.collectionVariables.get(\"baseUrl\") || \"http://localhost:8080\";\r",
 							"        pm.sendRequest({\r",
-							"            url : \"http://localhost:8080/events/\" + event1.id,\r",
+							"            url : baseUrl + \"/events/\" + event1.id,\r",
 							"            method : \"GET\",\r",
 							"            header: { \"Content-Type\": \"application/json\" }\r",
 							"        }, (error, response) => {\r",
 							"            pm.sendRequest({\r",
-							"            url : \"http://localhost:8080/events/\" + event2.id,\r",
+							"            url : baseUrl + \"/events/\" + event2.id,\r",
 							"            method : \"GET\",\r",
 							"            header: { \"Content-Type\": \"application/json\" }\r",
 							"            }, (error, response) => {\r",
 							"                pm.sendRequest({\r",
-							"                    url : \"http://localhost:8080/events/\" + event2.id,\r",
+							"                    url : baseUrl + \"/events/\" + event2.id,\r",
 							"                    method : \"GET\",\r",
 							"                    header: { \"Content-Type\": \"application/json\" }\r",
 							"                }, (error, response) => {\r",
@@ -323,9 +326,9 @@
 					}
 				],
 				"url": {
-					"raw": "{{baseUrl}}/stats?start=2020-05-05 00:00:00&end=2035-05-05 00:00:00&uris={{uri}}",
+					"raw": "{{statsBaseUrl}}/stats?start=2020-05-05 00:00:00&end=2035-05-05 00:00:00&uris={{uri}}",
 					"host": [
-						"{{baseUrl}}"
+						"{{statsBaseUrl}}"
 					],
 					"path": [
 						"stats"
@@ -377,20 +380,22 @@
 							"    try {    \r",
 							"        pm.collectionVariables.set(\"uri\", '/events');  \r",
 							"        \r",
+							"        const baseUrl = pm.collectionVariables.get(\"baseUrl\") || \"http://localhost:8080\";\r",
+							"        const statsBaseUrl = pm.collectionVariables.get(\"statsBaseUrl\") || \"http://localhost:9090\";\r",
 							"        pm.sendRequest({\r",
-							"            url : \"http://localhost:8080/events\",\r",
+							"            url : baseUrl + \"/events\",\r",
 							"            method : \"GET\",\r",
 							"            header: { \"Content-Type\": \"application/json\" }\r",
 							"        }, (error, response) => {\r",
 							"            \r",
 							"            pm.sendRequest({\r",
-							"                url : \"http://localhost:9090/stats?start=2020-05-05 00:00:00&end=2035-05-05 00:00:00&uris=/events&unique=false\",\r",
+							"                url : statsBaseUrl + \"/stats?start=2020-05-05 00:00:00&end=2035-05-05 00:00:00&uris=/events&unique=false\",\r",
 							"                method : \"GET\",\r",
 							"                header: { \"Content-Type\": \"application/json\" }\r",
 							"            }, (error, response) => {\r",
 							"                pm.collectionVariables.set('source', response.json());\r",
 							"                pm.sendRequest({\r",
-							"                    url : \"http://localhost:8080/events\",\r",
+							"                    url : baseUrl + \"/events\",\r",
 							"                    method : \"GET\",\r",
 							"                    header: { \"Content-Type\": \"application/json\" }\r",
 							"                });\r",
@@ -456,9 +461,9 @@
 					}
 				],
 				"url": {
-					"raw": "{{baseUrl}}/stats?start=2020-05-05 00:00:00&end=2035-05-05 00:00:00&uris={{uri}}&unique=false",
+					"raw": "{{statsBaseUrl}}/stats?start=2020-05-05 00:00:00&end=2035-05-05 00:00:00&uris={{uri}}&unique=false",
 					"host": [
-						"{{baseUrl}}"
+						"{{statsBaseUrl}}"
 					],
 					"path": [
 						"stats"
@@ -503,19 +508,21 @@
 							"    try {    \r",
 							"        pm.collectionVariables.set(\"uri\", '/events');  \r",
 							"        \r",
+							"        const baseUrl = pm.collectionVariables.get(\"baseUrl\") || \"http://localhost:8080\";\r",
+							"        const statsBaseUrl = pm.collectionVariables.get(\"statsBaseUrl\") || \"http://localhost:9090\";\r",
 							"        pm.sendRequest({\r",
-							"            url : \"http://localhost:8080/events\",\r",
+							"            url : baseUrl + \"/events\",\r",
 							"            method : \"GET\",\r",
 							"            header: { \"Content-Type\": \"application/json\" }\r",
 							"        }, (error, response) => {\r",
 							"            pm.sendRequest({\r",
-							"                url : \"http://localhost:8080/events\",\r",
+							"                url : baseUrl + \"/events\",\r",
 							"                method : \"GET\",\r",
 							"                header: { \"Content-Type\": \"application/json\" }\r",
 							"            }, (error, response) => {\r",
 							"                \r",
 							"                pm.sendRequest({\r",
-							"                    url : \"http://localhost:9090/stats?start=2020-05-05 00:00:00&end=2035-05-05 00:00:00&uris=/events&unique=true\",\r",
+							"                    url : statsBaseUrl + \"/stats?start=2020-05-05 00:00:00&end=2035-05-05 00:00:00&uris=/events&unique=true\",\r",
 							"                    method : \"GET\",\r",
 							"                    header: { \"Content-Type\": \"application/json\" }\r",
 							"                }, (error, response) => {\r",
@@ -585,9 +592,9 @@
 					}
 				],
 				"url": {
-					"raw": "{{baseUrl}}/stats?start=2020-05-05 00:00:00&end=2035-05-05 00:00:00&uris={{uri}}",
+					"raw": "{{statsBaseUrl}}/stats?start=2020-05-05 00:00:00&end=2035-05-05 00:00:00&uris={{uri}}",
 					"host": [
-						"{{baseUrl}}"
+						"{{statsBaseUrl}}"
 					],
 					"path": [
 						"stats"
@@ -658,9 +665,9 @@
 					}
 				],
 				"url": {
-					"raw": "{{baseUrl}}/stats?start=2035-05-05 00:00:00&end=2020-05-05 00:00:00&uris={{uri}}",
+					"raw": "{{statsBaseUrl}}/stats?start=2035-05-05 00:00:00&end=2020-05-05 00:00:00&uris={{uri}}",
 					"host": [
-						"{{baseUrl}}"
+						"{{statsBaseUrl}}"
 					],
 					"path": [
 						"stats"
@@ -725,9 +732,9 @@
 					}
 				],
 				"url": {
-					"raw": "{{baseUrl}}/stats?end=2020-05-05 00:00:00&uris={{uri}}",
+					"raw": "{{statsBaseUrl}}/stats?end=2020-05-05 00:00:00&uris={{uri}}",
 					"host": [
-						"{{baseUrl}}"
+						"{{statsBaseUrl}}"
 					],
 					"path": [
 						"stats"
@@ -793,9 +800,9 @@
 					}
 				],
 				"url": {
-					"raw": "{{baseUrl}}/stats?start=2035-05-05 00:00:00&uris={{uri}}",
+					"raw": "{{statsBaseUrl}}/stats?start=2035-05-05 00:00:00&uris={{uri}}",
 					"host": [
-						"{{baseUrl}}"
+						"{{statsBaseUrl}}"
 					],
 					"path": [
 						"stats"
@@ -836,26 +843,27 @@
 				"type": "text/javascript",
 				"exec": [
 					"API = class {",
-					"    constructor(postman, verbose = false, baseUrl = \"http://localhost:9090\") {",
+					"    constructor(postman, verbose = false, baseUrl = \"http://localhost:8080\") {",
 					"        this.baseUrl = baseUrl;",
 					"        this.pm = postman;",
 					"        this._verbose = verbose;",
 					"    }",
 					"",
 					"    async addPost(post, verbose=null) {",
-					"        return this.post(\"/hit\", post, \"Ошибка при сохранении информации о запросе к эндпойнту: \", verbose);",
+					"        const statsBaseUrl = pm.collectionVariables.get(\"statsBaseUrl\") || \"http://localhost:9090\";",
+					"        return this.post(\"/hit\", post, statsBaseUrl, \"Ошибка при сохранении информации о запросе к эндпойнту: \", verbose);",
 					"    }",
 					"",
 					"    async addUser(user, verbose=null) {",
-					"        return this.post(\"/admin/users\", user, \"http://localhost:8080\", \"Ошибка при добавлении нового пользователя: \", verbose);",
+					"        return this.post(\"/admin/users\", user, this.baseUrl, \"Ошибка при добавлении нового пользователя: \", verbose);",
 					"    }",
 					"",
 					"    async addCategory(category, verbose=null) {",
-					"        return this.post(\"/admin/categories\", category, \"http://localhost:8080\", \"Ошибка при добавлении новой категории: \", verbose);",
+					"        return this.post(\"/admin/categories\", category, this.baseUrl, \"Ошибка при добавлении новой категории: \", verbose);",
 					"    }",
 					"",
 					"    async addEvent(userId, event, verbose=null) {",
-					"        return this.post(\"/users/\" + userId + \"/events\", event, \"http://localhost:8080\", \"Ошибка при добавлении нового события: \", verbose);",
+					"        return this.post(\"/users/\" + userId + \"/events\", event, this.baseUrl, \"Ошибка при добавлении нового события: \", verbose);",
 					"    }",
 					"",
 					"    async publishEvent(eventId, verbose=null) {",
@@ -863,7 +871,7 @@
 					"    }",
 					"",
 					"    async patch(path, body = null, errorText = \"Ошибка при выполнении patch-запроса: \", verbose=null) {",
-					"        return this.sendRequest(\"PATCH\", path, \"http://localhost:8080\", body, errorText);",
+					"        return this.sendRequest(\"PATCH\", path, this.baseUrl, body, errorText);",
 					"    }",
 					"",
 					"    async post(path, body, newBaseUrl=null, errorText = \"Ошибка при выполнении post-запроса: \", verbose=null) {",
@@ -1012,6 +1020,11 @@
 	"variable": [
 		{
 			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "statsBaseUrl",
 			"value": "http://localhost:9090",
 			"type": "string"
 		},

@@ -1,14 +1,92 @@
 services:
+  discovery-server:
+    build:
+      context: ./infra/discovery-server
+    ports:
+      - "18761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8761
+      - EUREKA_INSTANCE_HOSTNAME=discovery-server
+
+  config-server:
+    build:
+      context: ./infra/config-server
+    ports:
+      - "8888:8888"
+    depends_on:
+      - discovery-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - EUREKA_SERVER_HOST=discovery-server
+      - EUREKA_SERVER_PORT=8761
+      - EUREKA_INSTANCE_HOSTNAME=config-server
+
+  gateway-server:
+    build:
+      context: ./infra/gateway-server
+    ports:
+      - "8080:8080"
+    depends_on:
+      - discovery-server
+      - config-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8080
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - EUREKA_SERVER_HOST=discovery-server
+      - EUREKA_SERVER_PORT=8761
+      - EUREKA_INSTANCE_HOSTNAME=gateway-server
+
   stats-server:
+    build:
+      context: ./stats-server/service
     ports:
       - "9090:9090"
+    depends_on:
+      - discovery-server
+      - config-server
+      - stats-db
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=9090
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - EUREKA_SERVER_HOST=discovery-server
+      - EUREKA_SERVER_PORT=8761
+      - EUREKA_INSTANCE_HOSTNAME=stats-server
 
   stats-db:
     image: postgres:16.1
+    environment:
+      - POSTGRES_DB=stat-server
+      - POSTGRES_USER=stat-server
+      - POSTGRES_PASSWORD=stat-server
 
   ewm-service:
+    build:
+      context: ./core/ewm-service
     ports:
-      - "8080:8080"
+      - "8081:8081"
+    depends_on:
+      - discovery-server
+      - config-server
+      - ewm-db
+      - stats-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8081
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - EUREKA_SERVER_HOST=discovery-server
+      - EUREKA_SERVER_PORT=8761
+      - EUREKA_INSTANCE_HOSTNAME=ewm-service
+      - STATS_SERVER_HOST=stats-server
+      - STATS_SERVER_PORT=9090
 
   ewm-db:
     image: postgres:16.1
+    environment:
+      - POSTGRES_DB=ewm-service
+      - POSTGRES_USER=ewm-service
+      - POSTGRES_PASSWORD=ewm-service

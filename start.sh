@@ -1,20 +1,16 @@
 #!/bin/bash
 
-# Скрипт для пересборки и запуска проекта Explore With Me
+# Скрипт для запуска проекта Explore With Me
 # 
 # Использование:
-#   ./rebuild.sh          - пересборка и запуск в обычном режиме (Docker)
-#   ./rebuild.sh --test   - пересборка и запуск в тестовом режиме (локально, H2, без Docker)
+#   ./start.sh          - запуск в обычном режиме (Docker)
+#   ./start.sh --test   - запуск в тестовом режиме (локально, H2, без Docker)
 #
 # В тестовом режиме:
 #   - Проект запускается локально без Docker
 #   - Используется H2 база данных (in-memory)
 #   - Логи сохраняются в папку logs/
 #   - Сервисы запускаются в фоновом режиме
-#
-# Примечание: Этот скрипт выполняет полную пересборку проекта.
-# Для обычного запуска используйте ./start.sh
-# Для остановки используйте ./stop.sh
 
 # Цвета для вывода
 GREEN='\033[0;32m'
@@ -93,41 +89,18 @@ wait_for_url() {
     return 1
 }
 
-# Функция остановки процессов Java
-stop_java_processes() {
-    print_header "Остановка запущенных сервисов"
-    
-    # Остановка ewm-service
-    local ewm_pid=$(ps aux | grep "[j]ava.*MainServer" | awk '{print $2}')
-    if [ -n "$ewm_pid" ]; then
-        print_info "Остановка EWM Service (PID: $ewm_pid)"
-        kill $ewm_pid 2>/dev/null
-        sleep 2
-        kill -9 $ewm_pid 2>/dev/null
-        print_success "EWM Service остановлен"
-    fi
-    
-    # Остановка stats-server
-    local stats_pid=$(ps aux | grep "[j]ava.*StatServer" | awk '{print $2}')
-    if [ -n "$stats_pid" ]; then
-        print_info "Остановка Stats Service (PID: $stats_pid)"
-        kill $stats_pid 2>/dev/null
-        sleep 2
-        kill -9 $stats_pid 2>/dev/null
-        print_success "Stats Service остановлен"
-    fi
-}
-
 if [ "$TEST_MODE" = true ]; then
     # ========== ТЕСТОВЫЙ РЕЖИМ (локально, H2, без Docker) ==========
     
     print_header "ТЕСТОВЫЙ РЕЖИМ: Локальный запуск с H2"
     
-    # Остановка предыдущих запущенных процессов
-    if [ -f "stop.sh" ]; then
-        ./stop.sh --test
-    else
-        stop_java_processes
+    # Получаем абсолютный путь к корню проекта
+    PROJECT_ROOT=$(pwd)
+    
+    # Проверка, не запущены ли уже сервисы
+    if [ -f "logs/stats-server.pid" ] || [ -f "logs/ewm-service.pid" ]; then
+        print_info "Обнаружены PID файлы. Запустите ./stop.sh --test для остановки сервисов"
+        exit 1
     fi
     
     # Создание папки для логов
@@ -140,28 +113,18 @@ if [ "$TEST_MODE" = true ]; then
         exit 1
     fi
     
-    # Очистка проекта
-    print_header "Очистка проекта Maven"
-    mvn clean
-    if [ $? -eq 0 ]; then
-        print_success "Проект очищен"
-    else
-        print_error "Ошибка при очистке проекта"
-        exit 1
-    fi
-    
-    # Сборка проекта
-    print_header "Сборка проекта Maven"
-    mvn package -DskipTests
-    if [ $? -eq 0 ]; then
+    # Проверка наличия собранных JAR файлов
+    if [ ! -f "stats-server/service/target/service-0.0.1-SNAPSHOT.jar" ]; then
+        print_header "Сборка проекта Maven"
+        mvn package -DskipTests
+        if [ $? -ne 0 ]; then
+            print_error "Ошибка при сборке проекта"
+            exit 1
+        fi
         print_success "Проект собран"
     else
-        print_error "Ошибка при сборке проекта"
-        exit 1
+        print_info "JAR файлы найдены, пропускаем сборку"
     fi
-    
-    # Получаем абсолютный путь к корню проекта
-    PROJECT_ROOT=$(pwd)
     
     # Запуск stats-server в фоновом режиме
     print_header "Запуск Stats Service (порт 9090)"
@@ -193,7 +156,6 @@ if [ "$TEST_MODE" = true ]; then
         echo $EWM_PID > logs/ewm-service.pid
     else
         print_error "Ошибка при запуске EWM Service"
-        stop_java_processes
         exit 1
     fi
     
@@ -207,7 +169,6 @@ if [ "$TEST_MODE" = true ]; then
     else
         print_error "Stats Service не запустился"
         print_info "Проверьте логи: tail -f logs/stats-server.log"
-        stop_java_processes
         exit 1
     fi
     
@@ -223,7 +184,6 @@ if [ "$TEST_MODE" = true ]; then
     else
         print_error "EWM Service не запустился"
         print_info "Проверьте логи: tail -f logs/ewm-service.log"
-        stop_java_processes
         exit 1
     fi
     
@@ -244,44 +204,29 @@ if [ "$TEST_MODE" = true ]; then
     echo "  tail -f logs/stats-server.log"
     echo ""
     print_info "Для остановки сервисов используйте:"
-    echo "  kill \$(cat logs/ewm-service.pid)"
-    echo "  kill \$(cat logs/stats-server.pid)"
-    echo ""
-    print_info "Или запустите скрипт снова с --test для перезапуска"
+    echo "  ./stop.sh --test"
     echo ""
     
 else
     # ========== ОБЫЧНЫЙ РЕЖИМ (Docker) ==========
     
-    print_header "Остановка контейнеров"
-    if [ -f "stop.sh" ]; then
-        ./stop.sh
-    else
-        docker compose down
-        if [ $? -eq 0 ]; then
-            print_success "Контейнеры остановлены"
-        else
-            print_error "Ошибка при остановке контейнеров"
+    print_header "Запуск проекта в Docker режиме"
+    
+    # Проверка наличия собранных JAR файлов
+    if [ ! -f "core/ewm-service/target/ewm-service-0.0.1-SNAPSHOT.jar" ] || \
+       [ ! -f "stats-server/service/target/service-0.0.1-SNAPSHOT.jar" ] || \
+       [ ! -f "infra/discovery-server/target/discovery-server-0.0.1-SNAPSHOT.jar" ] || \
+       [ ! -f "infra/config-server/target/config-server-0.0.1-SNAPSHOT.jar" ] || \
+       [ ! -f "infra/gateway-server/target/gateway-server-0.0.1-SNAPSHOT.jar" ]; then
+        print_header "Сборка проекта Maven"
+        mvn package -DskipTests
+        if [ $? -ne 0 ]; then
+            print_error "Ошибка при сборке проекта"
             exit 1
         fi
-    fi
-    
-    print_header "Очистка проекта Maven"
-    mvn clean
-    if [ $? -eq 0 ]; then
-        print_success "Проект очищен"
-    else
-        print_error "Ошибка при очистке проекта"
-        exit 1
-    fi
-    
-    print_header "Сборка проекта Maven"
-    mvn package -DskipTests
-    if [ $? -eq 0 ]; then
         print_success "Проект собран"
     else
-        print_error "Ошибка при сборке проекта"
-        exit 1
+        print_info "JAR файлы найдены, пропускаем сборку"
     fi
     
     print_header "Сборка Docker образов"
@@ -315,31 +260,27 @@ else
     
     print_header "Ожидание готовности сервисов"
     
-    # Проверка основного сервиса (ewm-service)
-    if wait_for_url "http://localhost:8080" "EWM Service (порт 8080)"; then
+    # Проверка discovery-server
+    if wait_for_url "http://localhost:8761" "Discovery Server (Eureka)"; then
+        print_success "Discovery Server готов"
+    else
+        print_error "Discovery Server не запустился"
+        print_info "Проверьте логи: docker compose logs discovery-server"
+        exit 1
+    fi
+    
+    # Проверка gateway-server (основной endpoint)
+    if wait_for_url "http://localhost:8080" "Gateway Server (порт 8080)"; then
         # Попытка проверить health endpoint, если доступен
         curl -s http://localhost:8080/actuator/health > /dev/null 2>&1
         if [ $? -eq 0 ]; then
             health_status=$(curl -s http://localhost:8080/actuator/health | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
-            print_info "Health статус EWM Service: $health_status"
+            print_info "Health статус Gateway Server: $health_status"
         fi
+        print_success "Gateway Server готов"
     else
-        print_error "EWM Service не запустился"
-        print_info "Проверьте логи: docker compose logs ewm-service"
-        exit 1
-    fi
-    
-    # Проверка сервиса статистики (stats-server)
-    if wait_for_url "http://localhost:9090" "Stats Service (порт 9090)"; then
-        # Попытка проверить health endpoint, если доступен
-        curl -s http://localhost:9090/actuator/health > /dev/null 2>&1
-        if [ $? -eq 0 ]; then
-            health_status=$(curl -s http://localhost:9090/actuator/health | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
-            print_info "Health статус Stats Service: $health_status"
-        fi
-    else
-        print_error "Stats Service не запустился"
-        print_info "Проверьте логи: docker compose logs stats-server"
+        print_error "Gateway Server не запустился"
+        print_info "Проверьте логи: docker compose logs gateway-server"
         exit 1
     fi
     
@@ -349,11 +290,16 @@ else
     print_header "Результат"
     print_success "Все сервисы успешно запущены!"
     echo ""
-    print_info "EWM Service: http://localhost:8080"
-    print_info "Stats Service: http://localhost:9090"
+    print_info "Gateway Server: http://localhost:8080"
+    print_info "Discovery Server (Eureka): http://localhost:8761"
+    print_info "Config Server: http://localhost:8888"
     echo ""
     print_info "Для просмотра логов используйте:"
+    echo "  docker compose logs -f gateway-server"
     echo "  docker compose logs -f ewm-service"
     echo "  docker compose logs -f stats-server"
+    echo ""
+    print_info "Для остановки сервисов используйте:"
+    echo "  ./stop.sh"
     echo ""
 fi

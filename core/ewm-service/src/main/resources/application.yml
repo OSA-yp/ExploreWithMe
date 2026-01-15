@@ -1,9 +1,11 @@
 server:
-  port: ${SERVER_PORT:9090}
+  port: ${SERVER_PORT:8081}
+  error:
+    include-binding-errors: always
 
 spring:
   application:
-    name: stats-server
+    name: ewm-service
   config:
     import: "optional:configserver:"
   cloud:
@@ -23,10 +25,10 @@ spring:
       mode: always
   datasource:
     driverClassName: org.postgresql.Driver
-    # url: jdbc:postgresql://localhost:5432/stat-server
-    url: jdbc:postgresql://stats-db:5432/stat-server
-    username: stat-server
-    password: stat-server
+    # url: jdbc:postgresql://localhost:5433/ewm-service
+    url: jdbc:postgresql://ewm-db:5432/ewm-service
+    username: ewm-service
+    password: ewm-service
     hikari:
       connection-timeout: 3000
       max-lifetime: 5
@@ -34,6 +36,14 @@ spring:
 logging:
   level:
     root: INFO
+
+ewm:
+  ewm-service:
+    name: ewm-service
+  # stats-server:
+  #   url: http://localhost:9090
+  stats-server:
+    url: http://${STATS_SERVER_HOST:stats-server}:${STATS_SERVER_PORT:9090}
 
 eureka:
   client:
