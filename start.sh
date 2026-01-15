@@ -114,7 +114,7 @@ if [ "$TEST_MODE" = true ]; then
     fi
     
     # Проверка наличия собранных JAR файлов
-    if [ ! -f "stats-server/service/target/service-0.0.1-SNAPSHOT.jar" ]; then
+    if [ ! -f "stats-server/target/stats-server-0.0.1-SNAPSHOT.jar" ]; then
         print_header "Сборка проекта Maven"
         mvn package -DskipTests
         if [ $? -ne 0 ]; then
@@ -128,8 +128,8 @@ if [ "$TEST_MODE" = true ]; then
     
     # Запуск stats-server в фоновом режиме
     print_header "Запуск Stats Service (порт 9090)"
-    cd "$PROJECT_ROOT/stats-server/service"
-    nohup java -jar -Dspring.profiles.active=test -Dlogging.file.name="$PROJECT_ROOT/logs/stats-server.log" target/service-0.0.1-SNAPSHOT.jar > "$PROJECT_ROOT/logs/stats-server-console.log" 2>&1 &
+    cd "$PROJECT_ROOT/stats-server"
+    nohup java -jar -Dspring.profiles.active=test -Dlogging.file.name="$PROJECT_ROOT/logs/stats-server.log" target/stats-server-0.0.1-SNAPSHOT.jar > "$PROJECT_ROOT/logs/stats-server-console.log" 2>&1 &
     STATS_PID=$!
     cd "$PROJECT_ROOT"
     
@@ -214,7 +214,7 @@ else
     
     # Проверка наличия собранных JAR файлов
     if [ ! -f "main-service/target/main-service-0.0.1-SNAPSHOT.jar" ] || \
-       [ ! -f "stats-server/service/target/service-0.0.1-SNAPSHOT.jar" ] || \
+       [ ! -f "stats-server/target/stats-server-0.0.1-SNAPSHOT.jar" ] || \
        [ ! -f "infra/discovery-server/target/discovery-server-0.0.1-SNAPSHOT.jar" ] || \
        [ ! -f "infra/config-server/target/config-server-0.0.1-SNAPSHOT.jar" ] || \
        [ ! -f "infra/gateway-server/target/gateway-server-0.0.1-SNAPSHOT.jar" ]; then

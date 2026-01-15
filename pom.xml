@@ -27,6 +27,9 @@
 		<module>infra</module>
 		<module>main-service</module>
 		<module>stats-server</module>
+		<module>stats-server/client</module>
+		<module>stats-server/common-dto</module>
+		<module>stats-server/service</module>
 	</modules>
 
 	<dependencyManagement>
