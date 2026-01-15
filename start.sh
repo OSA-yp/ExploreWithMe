@@ -146,8 +146,8 @@ if [ "$TEST_MODE" = true ]; then
     
     # Запуск ewm-service в фоновом режиме
     print_header "Запуск EWM Service (порт 8080)"
-    cd "$PROJECT_ROOT/core/ewm-service"
-    nohup java -jar -Dspring.profiles.active=test -Dlogging.file.name="$PROJECT_ROOT/logs/ewm-service.log" target/ewm-service-0.0.1-SNAPSHOT.jar > "$PROJECT_ROOT/logs/ewm-service-console.log" 2>&1 &
+    cd "$PROJECT_ROOT/main-service"
+    nohup java -jar -Dspring.profiles.active=test -Dlogging.file.name="$PROJECT_ROOT/logs/ewm-service.log" target/main-service-0.0.1-SNAPSHOT.jar > "$PROJECT_ROOT/logs/ewm-service-console.log" 2>&1 &
     EWM_PID=$!
     cd "$PROJECT_ROOT"
     
@@ -213,7 +213,7 @@ else
     print_header "Запуск проекта в Docker режиме"
     
     # Проверка наличия собранных JAR файлов
-    if [ ! -f "core/ewm-service/target/ewm-service-0.0.1-SNAPSHOT.jar" ] || \
+    if [ ! -f "main-service/target/main-service-0.0.1-SNAPSHOT.jar" ] || \
        [ ! -f "stats-server/service/target/service-0.0.1-SNAPSHOT.jar" ] || \
        [ ! -f "infra/discovery-server/target/discovery-server-0.0.1-SNAPSHOT.jar" ] || \
        [ ! -f "infra/config-server/target/config-server-0.0.1-SNAPSHOT.jar" ] || \
