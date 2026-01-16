@@ -1,9 +1,12 @@
 package ru.practicum.explore.server.exception;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.stream.Collectors;
 
 
 @RestControllerAdvice
@@ -34,10 +37,20 @@ public class ErrorHandler {
     }
 
     @ExceptionHandler({AppException.class})
-    public ErrorResponse appExceptionHandler(ForbiddenException e) {
+    public ErrorResponse appExceptionHandler(AppException e) {
         return new ErrorResponse("AppException", e.getMessage(), e.getStackTrace());
     }
 
-
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleMethodArgumentNotValid(MethodArgumentNotValidException e) {
+        String message = e.getBindingResult().getFieldErrors().stream()
+                .map(error -> String.format("Field: %s. Error: %s. Value: %s",
+                        error.getField(),
+                        error.getDefaultMessage(),
+                        error.getRejectedValue()))
+                .collect(Collectors.joining("; "));
+        return new ErrorResponse("BAD_REQUEST", "Incorrectly made request. " + message, e.getStackTrace());
+    }
 
 }

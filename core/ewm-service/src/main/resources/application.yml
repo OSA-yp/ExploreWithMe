@@ -30,8 +30,10 @@ spring:
     username: ewm-service
     password: ewm-service
     hikari:
-      connection-timeout: 3000
-      max-lifetime: 5
+      connection-timeout: 30000
+      max-lifetime: 1800000
+      minimum-idle: 5
+      maximum-pool-size: 10
 
 logging:
   level:
@@ -52,3 +54,13 @@ eureka:
   instance:
     preferIpAddress: true
     hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always

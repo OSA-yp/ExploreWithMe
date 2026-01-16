@@ -68,11 +68,15 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         event.setInitiator(user);
         event.setCategory(category);
         event.setCreatedOn(LocalDateTime.now());
+        event.setState(EventState.PENDING);
 
         event = eventRepository.save(event);
         log.info("Event with id={} was created", event.getId());
 
-        return EventMapper.toEventFullDto(event);
+        EventFullDto dto = EventMapper.toEventFullDto(event);
+        dto.setConfirmedRequests(0L);
+        dto.setViews(0L);
+        return dto;
     }
 
     @Override
@@ -108,6 +112,21 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         Event updated = eventRepository.save(event);
         EventFullDto dto = EventMapper.toEventFullDto(updated);
         dto.setConfirmedRequests(participationRequestRepository.countByEventAndStatus(eventId, RequestStatus.CONFIRMED));
+        
+        StatsClient statsClient = new StatsClient(discoveryClient, "stats-server");
+        if (updated.getPublishedOn() != null) {
+            ViewsStatsRequest statsRequest = ViewsStatsRequest.builder()
+                    .uri("/events/" + eventId)
+                    .start(updated.getPublishedOn())
+                    .end(LocalDateTime.now())
+                    .unique(true)
+                    .build();
+            List<ViewStatsDto> stats = statsClient.getStats(List.of(statsRequest));
+            dto.setViews(stats.isEmpty() ? 0L : stats.getFirst().getHits());
+        } else {
+            dto.setViews(0L);
+        }
+        
         return dto;
     }
 
