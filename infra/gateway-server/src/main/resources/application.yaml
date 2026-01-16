@@ -22,7 +22,7 @@ spring:
           lower-case-service-id: true
       routes:
         - id: ewm_service_route
-          uri: lb://ewm-service
+          uri: lb://EWM-SERVICE
           order: -1
           predicates:
             - Path=/**

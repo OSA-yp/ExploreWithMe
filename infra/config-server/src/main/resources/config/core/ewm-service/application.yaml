@@ -41,6 +41,7 @@ eureka:
   instance:
     preferIpAddress: true
     hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+    instance-id: "${spring.application.name}:${random.value}"
 
 management:
   endpoints:
