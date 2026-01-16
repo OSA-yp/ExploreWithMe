@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import ru.practicum.explore.server.exception.ConflictException;
 import ru.practicum.explore.server.exception.NotFoundException;
@@ -40,14 +41,17 @@ public class UserServiceImpl implements UserService {
     @Override
     public Collection<UserResponseDto> getUsers(GetUsersParams params) {
 
-        Pageable pageable = PageRequest.of(params.getFrom(), params.getSize());
-
         if (params.getIds() != null && !params.getIds().isEmpty()) {
             Collection<User> users = userRepository.findAllById(params.getIds());
             return users.stream()
                     .map(UserMapper::toUserResponseDto)
                     .toList();
         } else {
+            Pageable pageable = PageRequest.of(
+                    params.getFrom(),
+                    params.getSize(),
+                    Sort.by(Sort.Direction.ASC, "id")
+            );
 
             Page<User> users = userRepository.findAll(pageable);
             return users.stream()

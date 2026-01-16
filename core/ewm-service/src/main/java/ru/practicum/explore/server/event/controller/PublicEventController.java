@@ -74,9 +74,11 @@ public class PublicEventController {
     public ResponseEntity<EventFullDto> getEvent(@PathVariable Long id, HttpServletRequest request) {
         log.info("Запрос события с идентификатором {}", id);
 
-        hitSender.send(request);
-
+        // Сначала получаем событие со статистикой (без учета текущего запроса)
         EventFullDto event = eventService.getPublicEventById(id);
+
+        // Затем отправляем hit для текущего запроса (для следующего запроса)
+        hitSender.send(request);
 
         return ResponseEntity.ok(event);
     }

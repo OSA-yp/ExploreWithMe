@@ -32,7 +32,6 @@ public class HitsServiceImpl implements HitsService {
             throw new ValidationException("End time must be after start time");
         }
 
-
         if (unique) {
 
             if (uris.isEmpty()) {

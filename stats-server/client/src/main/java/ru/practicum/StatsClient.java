@@ -17,10 +17,11 @@ import ru.practicum.explore.dto.ViewStatsDto;
 import ru.practicum.explore.dto.ViewsStatsRequest;
 
 import java.net.URI;
-import java.time.LocalDateTime;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Slf4j
@@ -79,7 +80,6 @@ public class StatsClient {
                     .body(hit)
                     .retrieve()
                     .toBodilessEntity();
-            log.debug("Статистика успешно отправлена");
         } catch (RestClientException e) {
             log.error("Ошибка при отправке статистики: {}", e.getMessage(), e);
             throw new ru.practicum.exception.StatsServiceException("Ошибка при отправке статистики", e);
@@ -91,17 +91,25 @@ public class StatsClient {
         for (ViewsStatsRequest req : requests) {
             try {
                 URI baseUri = makeUri(STATS_ENDPOINT);
-                String queryString = "start=" + DATE_TIME_FORMATTER.format(req.getStart()) +
-                        "&end=" + DATE_TIME_FORMATTER.format(req.getEnd()) +
-                        "&uris=" + String.join(",", req.getUris()) +
+                String startStr = DATE_TIME_FORMATTER.format(req.getStart());
+                String endStr = DATE_TIME_FORMATTER.format(req.getEnd());
+                String urisStr = String.join(",", req.getUris());
+                String queryString = "start=" + URLEncoder.encode(startStr, StandardCharsets.UTF_8) +
+                        "&end=" + URLEncoder.encode(endStr, StandardCharsets.UTF_8) +
+                        "&uris=" + URLEncoder.encode(urisStr, StandardCharsets.UTF_8) +
                         "&unique=" + req.isUnique();
                 URI fullUri = URI.create(baseUri.toString() + "?" + queryString);
+
                 List<ViewStatsDto> stats = restClient.get()
                         .uri(fullUri)
                         .retrieve()
                         .body(new ParameterizedTypeReference<>() {
                         });
-                assert stats != null;
+                
+                if (stats == null) {
+                    stats = Collections.emptyList();
+                }
+
                 allStats.addAll(stats);
             } catch (RestClientException e) {
                 log.error("Ошибка при запросе статистики", e);
@@ -111,22 +119,5 @@ public class StatsClient {
             }
         }
         return allStats;
-    }
-
-    private void validateDateTimeParameters(String start, String end) {
-        if (start == null || end == null) {
-            throw new IllegalArgumentException("Дата и время начала и окончания диапазона должны быть указаны");
-        }
-
-        try {
-            LocalDateTime startDate = LocalDateTime.parse(start, DATE_TIME_FORMATTER);
-            LocalDateTime endDate = LocalDateTime.parse(end, DATE_TIME_FORMATTER);
-
-            if (startDate.isAfter(endDate)) {
-                throw new IllegalArgumentException("Дата начала не может быть позже даты окончания");
-            }
-        } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException("Неверный формат даты. Ожидается yyyy-MM-dd HH:mm:ss", e);
-        }
     }
 }

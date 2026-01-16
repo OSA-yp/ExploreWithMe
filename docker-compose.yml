@@ -78,6 +78,8 @@ services:
       context: ./stats-server
     ports:
       - "9090:9090"
+    volumes:
+      - /tmp:/tmp
     depends_on:
       discovery-server:
         condition: service_healthy
@@ -116,6 +118,8 @@ services:
       context: ./main-service
     ports:
       - "8081:8081"
+    volumes:
+      - /tmp:/tmp
     depends_on:
       discovery-server:
         condition: service_healthy

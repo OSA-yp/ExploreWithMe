@@ -9,6 +9,7 @@ import ru.practicum.explore.server.event.model.Event;
 import ru.practicum.explore.server.request.enums.RequestStatus;
 import ru.practicum.explore.server.request.repository.ParticipationRequestRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public class EventFullDtoCreator {
@@ -17,13 +18,24 @@ public class EventFullDtoCreator {
         EventFullDto dto = EventMapper.toEventFullDto(event);
         dto.setConfirmedRequests(requestRepository.countByEventAndStatus(eventId, RequestStatus.CONFIRMED));
 
-        ViewsStatsRequest statsRequest = ViewsStatsRequest.builder()
-                .uri("/events/" + eventId)
-                .unique(true)
-                .build();
+        if (event.getPublishedOn() != null) {
+            String uri = "/events/" + eventId;
+            LocalDateTime start = event.getPublishedOn();
+            LocalDateTime end = LocalDateTime.now();
 
-        List<ViewStatsDto> stats = statsClient.getStats(List.of(statsRequest));
-        dto.setViews(stats.isEmpty() ? 0L : stats.getFirst().getHits());
+            ViewsStatsRequest statsRequest = ViewsStatsRequest.builder()
+                    .uri(uri)
+                    .start(start)
+                    .end(end)
+                    .unique(true)
+                    .build();
+
+            List<ViewStatsDto> stats = statsClient.getStats(List.of(statsRequest));
+
+            dto.setViews(stats.isEmpty() ? 0L : stats.getFirst().getHits());
+        } else {
+            dto.setViews(0L);
+        }
 
         return dto;
     }

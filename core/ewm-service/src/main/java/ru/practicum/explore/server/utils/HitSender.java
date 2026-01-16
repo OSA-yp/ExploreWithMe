@@ -22,10 +22,28 @@ public class HitSender {
     public void send(HttpServletRequest request) {
         StatsClient statsClient = new StatsClient(discoveryClient, "stats-server");
 
+        String clientIp = getClientIp(request);
+        String uri = request.getRequestURI();
+        String timestamp = LocalDateTime.now().format(DATE_TIME_FORMATTER);
+
         EndpointHitDto hit = new EndpointHitDto(config.getEwmServiceName(),
-                request.getRequestURI(),
-                request.getRemoteAddr(),
-                LocalDateTime.now().format(DATE_TIME_FORMATTER));
+                uri,
+                clientIp,
+                timestamp);
+
         statsClient.sendHit(hit);
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            // X-Forwarded-For может содержать несколько IP через запятую
+            return xForwardedFor.split(",")[0].trim();
+        }
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty()) {
+            return xRealIp;
+        }
+        return request.getRemoteAddr();
     }
 }
