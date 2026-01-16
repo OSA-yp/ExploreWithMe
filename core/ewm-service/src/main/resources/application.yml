@@ -38,6 +38,9 @@ spring:
 logging:
   level:
     root: INFO
+    org.springframework.cloud.loadbalancer: DEBUG
+    com.netflix.discovery: DEBUG
+    ru.practicum.explore: DEBUG
 
 ewm:
   ewm-service:
