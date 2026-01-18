@@ -15,31 +15,14 @@ spring:
       discovery:
         enabled: true
         serviceId: config-server
-    gateway:
-      discovery:
-        locator:
-          enabled: true
-          lower-case-service-id: true
-      routes:
-        - id: ewm_service_route
-          uri: lb://MAIN-SERVICE
-          order: -1
-          predicates:
-            - Path=/**
 
-server:
-  port: 8080
-
-management:
-  endpoints:
-    enabled-by-default: true
-    web:
-      exposure:
-        include: health,info
-      base-path: /actuator
-  endpoint:
-    health:
-      show-details: always
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.loadbalancer: DEBUG
+    com.netflix.discovery: DEBUG
+    ru.practicum.explore: DEBUG
 
 eureka:
   client:
@@ -50,11 +33,3 @@ eureka:
     hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
     instance-id: "${spring.application.name}:${random.value}"
     leaseRenewalIntervalInSeconds: 10
-
-logging:
-  level:
-    root: INFO
-    org.springframework.cloud.gateway: DEBUG
-    org.springframework.cloud.loadbalancer: DEBUG
-    com.netflix.discovery: DEBUG
-    ru.practicum.explore: DEBUG
