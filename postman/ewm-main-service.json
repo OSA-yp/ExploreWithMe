@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "4f622f31-328a-4506-95bd-66359cfbe749",
-		"name": "Test Explore With Me - Main service",
+		"_postman_id": "b7d50c64-67b6-43c5-90ca-8e982296449a",
+		"name": "Test Explore With Me Plus - Main - Spring Cloud",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "23073145",
-		"_collection_link": "https://universal-shadow-295426.postman.co/workspace/My-Workspace~4200f6aa-0504-44b1-8a1d-707d0dcbd5ce/collection/13708500-4f622f31-328a-4506-95bd-66359cfbe749?action=share&source=collection_link&creator=23073145"
+		"_collection_link": "https://universal-shadow-295426.postman.co/workspace/My-Workspace~4200f6aa-0504-44b1-8a1d-707d0dcbd5ce/collection/13708500-b7d50c64-67b6-43c5-90ca-8e982296449a?action=share&source=collection_link&creator=23073145"
 	},
 	"item": [
 		{
@@ -6711,7 +6711,7 @@
 													"    let user;\r",
 													"    try {\r",
 													"        user = rnd.getUser();\r",
-													"        user.email = rnd.getWord(1) + '@a.ru';\r",
+													"        user.email = rnd.getWord(15) + '@a.ru';\r",
 													"    } catch(err) {\r",
 													"        console.error(\"Ошибка при подготовке тестовых данных.\", err);\r",
 													"    }\r",
@@ -6738,7 +6738,8 @@
 													"    100 \r",
 													");"
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										},
 										{
@@ -6752,7 +6753,8 @@
 													"});\r",
 													""
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										}
 									],
@@ -10856,7 +10858,7 @@
 									"        pm.request.body.update({\r",
 									"            mode: 'raw',\r",
 									"            raw: JSON.stringify({\r",
-									"                eventDate : rnd.getFutureDateTime(6)\r",
+									"                eventDate : \"2124-10-11 23:10:05\"\r",
 									"            }),\r",
 									"            options: { raw: { language: 'json' } }\r",
 									"        });\r",
@@ -11298,6 +11300,42 @@
 					"name": "Получение категорий",
 					"event": [
 						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Ответ должен содержать код статуса 200 и данные в формате json\", function () {\r",
+									"    pm.response.to.be.ok;    \r",
+									"    pm.response.to.be.withBody;\r",
+									"    pm.response.to.be.json;\r",
+									"});\r",
+									"\r",
+									"const source = pm.collectionVariables.get('response');\r",
+									"const target = pm.response.json();\r",
+									"let founded;\r",
+									"target.forEach(function(element){\r",
+									"    if (element.id == source.id) founded = element\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Категория должна содержать поля: id, name\", function () {\r",
+									"    pm.expect(target[0]).to.have.property('id');\r",
+									"    pm.expect(target[0]).to.have.property('name');\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Данные в ответе должны соответствовать данным в запросе\", function () {\r",
+									"    if (founded) {\r",
+									"        pm.expect(source.id).equal(founded.id, 'Идентификатор категории должен соответствовать идентификатору категории добавленной ранее');\r",
+									"        pm.expect(source.name).equal(founded.name, 'Название категории должно соответствовать названию категории добавленной ранее');\r",
+									"    } else {\r",
+									"        pm.expect.fail(\"No matching category found in the response\");\r",
+									"    }\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
 							"listen": "prerequest",
 							"script": {
 								"exec": [
@@ -11328,35 +11366,8 @@
 									"    100 \r",
 									");"
 								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Ответ должен содержать код статуса 200 и данные в формате json\", function () {\r",
-									"    pm.response.to.be.ok;    \r",
-									"    pm.response.to.be.withBody;\r",
-									"    pm.response.to.be.json;\r",
-									"});\r",
-									"\r",
-									"const source = pm.collectionVariables.get('response');\r",
-									"const target = pm.response.json();\r",
-									"let founded;\r",
-									"target.forEach(function(element){if (element.id == source.id) founded = element});\r",
-									"\r",
-									"pm.test(\"Категория должна содержать поля: id, name\", function () {\r",
-									"pm.expect(target[0]).to.have.property('id');\r",
-									"pm.expect(target[0]).to.have.property('name');\r",
-									"});\r",
-									"\r",
-									"pm.test(\"Данные в ответе должны соответствовать данным в запросе\", function () {\r",
-									"    pm.expect(source.id).equal(founded.id, 'Идентификатор категории должен соответствовать идентификатору категории добавленной ранее');\r",
-									"    pm.expect(source.name).equal(founded.name, 'Название категории должно соответствовать названию категории добавленной ранее');\r",
-									"});"
-								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {}
 							}
 						}
 					],
@@ -12933,7 +12944,8 @@
 									"    100 \r",
 									");"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {}
 							}
 						},
 						{
@@ -12958,13 +12970,18 @@
 									"});\r",
 									"\r",
 									"pm.test(\"Данные в ответе должны соответствовать данным в запросе\", function () {\r",
+									"    const sourceCreated = new Date(source.created);\r",
+									"    const targetCreated = new Date(target.created);\r",
 									"    pm.expect(source.id).equal(target.id, 'Идентификатор запроса на участие в событии должен соответствовать идентификатору запроса, созданного ранее');\r",
 									"    pm.expect(source.requester).equal(target.requester, 'Пользователя, запрашивающий доступ на участие в событии, должен соответствовать указанному пользователю');\r",
 									"    pm.expect(source.event).equal(target.event, 'Событие, доступ к которому запрашивает пользователь, должно соответствовать событию, доступ к которому пользователь запрашивал доступ ранее');\r",
-									"    pm.expect(source.created).equal(target.created, 'Время создания запроса на участие в событии должно соответствовать времени создания запроса, созданного ранее указанным пользователем');\r",
+									"    pm.test('Время создания запроса на участие в событии должно соответствовать времени создания запроса, созданного ранее указанным пользователем', function () {\r",
+									"    pm.expect(sourceCreated.getTime()).to.equal(targetCreated.getTime(), 'Времена не совпадают');\r",
+									"});\r",
 									"});"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {}
 							}
 						}
 					],
@@ -13042,7 +13059,8 @@
 									"    100 \r",
 									");"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {}
 							}
 						},
 						{
@@ -13067,13 +13085,18 @@
 									"});\r",
 									"\r",
 									"pm.test(\"Данные в ответе должны соответствовать данным в запросе\", function () {\r",
+									"    const sourceCreated = new Date(source.created);\r",
+									"    const targetCreated = new Date(target.created);\r",
 									"    pm.expect(source.id).equal(target.id, 'Идентификатор запроса на участие в событии должен соответствовать идентификатору запроса на участие в событии указанного пользователя');\r",
 									"    pm.expect(source.requester).equal(target.requester, 'Автор запроса на участие в событии должен соответствовать указанному пользователю');\r",
 									"    pm.expect(source.event).equal(target.event, 'Событие в ответе должно соответствовать событию с запросом на участие от указанного пользователя');\r",
-									"    pm.expect(source.created).equal(target.created, 'Время создания запроса на участие в событии должно соответствовать времени создания запроса на участие в событии указанного пользователя');\r",
+									"    pm.test('Время создания запроса на участие в событии должно соответствовать времени создания запроса на участие в событии указанного пользователя', function () {\r",
+									"    pm.expect(sourceCreated.getTime()).to.equal(targetCreated.getTime(), 'Времена не совпадают');\r",
+									"});\r",
 									"});"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {}
 							}
 						}
 					],
@@ -13430,7 +13453,8 @@
 									"    100 \r",
 									");"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {}
 							}
 						},
 						{
@@ -13460,13 +13484,18 @@
 									"});\r",
 									"\r",
 									"pm.test(\"Данные в ответе должны соответствовать данным в запросе\", function () {\r",
+									"    const sourceCreated = new Date(source.created);\r",
+									"    const targetCreated = new Date(target.created);\r",
 									"    pm.expect(source.id).equal(target.id, 'Идентификатор отменённого запроса на участие в событии должен соответствовать идентификатору запроса до отмены');\r",
 									"    pm.expect(source.requester).equal(target.requester, 'Пользователь, отменяющий запрос на участие в событии, должен соответствовать текущему пользователю');\r",
 									"    pm.expect(source.event).equal(target.event, 'Событие отменённого запроса на участие должно соответствовать запросу на участие в событии до отмены');\r",
-									"    pm.expect(source.created).equal(target.created, 'Дата создания отменённого запроса на участие в событии должна соответствовать дате создания запроса до отмены');\r",
+									"    pm.test('Дата создания отменённого запроса на участие в событии должна соответствовать дате создания запроса до отмены', function () {\r",
+									"    pm.expect(sourceCreated.getTime()).to.equal(targetCreated.getTime(), 'Время не совпадает');\r",
+									"});\r",
 									"});"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {}
 							}
 						}
 					],
@@ -13556,7 +13585,8 @@
 									"    100 \r",
 									");"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {}
 							}
 						},
 						{
@@ -13581,10 +13611,14 @@
 									"});\r",
 									"\r",
 									"pm.test(\"Данные в ответе должны соответствовать данным в запросе\", function () {\r",
+									"    const sourceCreated = new Date(source.created);\r",
+									"    const targetCreated = new Date(target.created);\r",
 									"    pm.expect(source.id).equal(target.id, 'Идентификатор запроса на участие в событии должен соответствовать идентификатору запроса на участие в событии указанного пользователя');\r",
 									"    pm.expect(source.requester).equal(target.requester, 'Пользователь, запрашивающий доступ на участие в событии должен пользователю, отправившему запрос на участие в событии указанного пользователя ранее');\r",
 									"    pm.expect(source.event).equal(target.event, 'Событие, запрос на участие в котором надо подтвердить, должно соответствовать событию указанного пользователя');\r",
-									"    pm.expect(source.created).equal(target.created, 'Время создания запроса на участие в событии после подтверждения должно соответствовать времени создания запроса на участие в событии указанного пользователя до подтверждения');\r",
+									"    pm.test('Время создания запроса на участие в событии после подтверждения должно соответствовать времени создания запроса на участие в событии указанного пользователя до подтверждения', function () {\r",
+									"    pm.expect(sourceCreated.getTime()).to.equal(targetCreated.getTime(), 'Время не совпадают');\r",
+									"});\r",
 									"});\r",
 									"\r",
 									"pm.test(\"Запрос на участие должен иметь статус PENDING при создании и статус REJECTED после выполнения запроса\", function () {\r",
@@ -13592,7 +13626,8 @@
 									"    pm.expect(target.status).equal(\"REJECTED\");\r",
 									"});"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {}
 							}
 						}
 					],
@@ -13696,7 +13731,8 @@
 									"    100 \r",
 									");"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {}
 							}
 						},
 						{
@@ -13721,10 +13757,14 @@
 									"});\r",
 									"\r",
 									"pm.test(\"Данные в ответе должны соответствовать данным в запросе\", function () {\r",
+									"    const sourceCreated = new Date(source.created);\r",
+									"    const targetCreated = new Date(target.created);\r",
 									"    pm.expect(source.id).equal(target.id, 'Идентификатор запроса на участие в событии должен соответствовать идентификатору запроса на участие в событии указанного пользователя');\r",
 									"    pm.expect(source.requester).equal(target.requester, 'Пользователь, запрашивающий доступ на участие в событии должен пользователю, отправившему запрос на участие в событии указанного пользователя ранее');\r",
 									"    pm.expect(source.event).equal(target.event, 'Событие, запрос на участие в котором надо подтвердить, должно соответствовать событию указанного пользователя');\r",
-									"    pm.expect(source.created).equal(target.created, 'Время создания запроса на участие в событии после подтверждения должно соответствовать времени создания запроса на участие в событии указанного пользователя до подтверждения');\r",
+									"    pm.test('Время создания запроса на участие в событии после подтверждения должно соответствовать времени создания запроса на участие в событии указанного пользователя до подтверждения', function () {\r",
+									"    pm.expect(sourceCreated.getTime()).to.equal(targetCreated.getTime(), 'Времена не совпадают');\r",
+									"});\r",
 									"});\r",
 									"\r",
 									"pm.test(\"Запрос на участие должен иметь статус PENDING при создании и статус CONFIRMED после выполнения запроса\", function () {\r",
@@ -13732,7 +13772,8 @@
 									"    pm.expect(target.status).equal(\"CONFIRMED\");\r",
 									"});"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {}
 							}
 						}
 					],

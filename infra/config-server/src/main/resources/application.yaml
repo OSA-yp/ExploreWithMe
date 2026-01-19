@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: config-server
+  profiles:
+    active: native
+  cloud:
+    config:
+      server:
+        native:
+          searchLocations:
+            - classpath:config/core/{application}
+            - classpath:config/stats-server/{application}
+            - classpath:config/infra/{application}
+server:
+  port: ${SERVER_PORT:8888}
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://${EUREKA_SERVER_HOST:discovery-server}:${EUREKA_SERVER_PORT:8761}/eureka/
+  instance:
+    preferIpAddress: true
+    hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+
+management:
+  endpoints:
+    enabled-by-default: true
+    web:
+      exposure:
+        include: health,info
+      base-path: /actuator
+  endpoint:
+    health:
+      enabled: true
+      show-details: always

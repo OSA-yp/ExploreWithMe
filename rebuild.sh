@@ -3,14 +3,18 @@
 # Скрипт для пересборки и запуска проекта Explore With Me
 # 
 # Использование:
-#   ./rebuild.sh          - запуск в обычном режиме (Docker)
-#   ./rebuild.sh --test   - запуск в тестовом режиме (локально, H2, без Docker)
+#   ./rebuild.sh          - пересборка и запуск в обычном режиме (Docker)
+#   ./rebuild.sh --test   - пересборка и запуск в тестовом режиме (локально, H2, без Docker)
 #
 # В тестовом режиме:
 #   - Проект запускается локально без Docker
 #   - Используется H2 база данных (in-memory)
 #   - Логи сохраняются в папку logs/
 #   - Сервисы запускаются в фоновом режиме
+#
+# Примечание: Этот скрипт выполняет полную пересборку проекта.
+# Для обычного запуска используйте ./start.sh
+# Для остановки используйте ./stop.sh
 
 # Цвета для вывода
 GREEN='\033[0;32m'
@@ -120,7 +124,11 @@ if [ "$TEST_MODE" = true ]; then
     print_header "ТЕСТОВЫЙ РЕЖИМ: Локальный запуск с H2"
     
     # Остановка предыдущих запущенных процессов
-    stop_java_processes
+    if [ -f "stop.sh" ]; then
+        ./stop.sh --test
+    else
+        stop_java_processes
+    fi
     
     # Создание папки для логов
     print_header "Создание папки для логов"
@@ -157,8 +165,8 @@ if [ "$TEST_MODE" = true ]; then
     
     # Запуск stats-server в фоновом режиме
     print_header "Запуск Stats Service (порт 9090)"
-    cd "$PROJECT_ROOT/stats-server/service"
-    nohup java -jar -Dspring.profiles.active=test -Dlogging.file.name="$PROJECT_ROOT/logs/stats-server.log" target/service-0.0.1-SNAPSHOT.jar > "$PROJECT_ROOT/logs/stats-server-console.log" 2>&1 &
+    cd "$PROJECT_ROOT/stats-server"
+    nohup java -jar -Dspring.profiles.active=test -Dlogging.file.name="$PROJECT_ROOT/logs/stats-server.log" target/stats-server-0.0.1-SNAPSHOT.jar > "$PROJECT_ROOT/logs/stats-server-console.log" 2>&1 &
     STATS_PID=$!
     cd "$PROJECT_ROOT"
     
@@ -175,8 +183,8 @@ if [ "$TEST_MODE" = true ]; then
     
     # Запуск ewm-service в фоновом режиме
     print_header "Запуск EWM Service (порт 8080)"
-    cd "$PROJECT_ROOT/ewm-service"
-    nohup java -jar -Dspring.profiles.active=test -Dlogging.file.name="$PROJECT_ROOT/logs/ewm-service.log" target/ewm-service-0.0.1-SNAPSHOT.jar > "$PROJECT_ROOT/logs/ewm-service-console.log" 2>&1 &
+    cd "$PROJECT_ROOT/main-service"
+    nohup java -jar -Dspring.profiles.active=test -Dlogging.file.name="$PROJECT_ROOT/logs/ewm-service.log" target/main-service-0.0.1-SNAPSHOT.jar > "$PROJECT_ROOT/logs/ewm-service-console.log" 2>&1 &
     EWM_PID=$!
     cd "$PROJECT_ROOT"
     
@@ -246,12 +254,16 @@ else
     # ========== ОБЫЧНЫЙ РЕЖИМ (Docker) ==========
     
     print_header "Остановка контейнеров"
-    docker compose down
-    if [ $? -eq 0 ]; then
-        print_success "Контейнеры остановлены"
+    if [ -f "stop.sh" ]; then
+        ./stop.sh
     else
-        print_error "Ошибка при остановке контейнеров"
-        exit 1
+        docker compose down
+        if [ $? -eq 0 ]; then
+            print_success "Контейнеры остановлены"
+        else
+            print_error "Ошибка при остановке контейнеров"
+            exit 1
+        fi
     fi
     
     print_header "Очистка проекта Maven"
