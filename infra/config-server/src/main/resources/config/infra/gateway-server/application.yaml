@@ -5,14 +5,92 @@ spring:
     gateway:
       discovery:
         locator:
-          enabled: true
+          enabled: false
           lower-case-service-id: true
       routes:
-        - id: ewm_service_route
-          uri: lb://main-service
-          order: -1
+        - id: user_service_admin_users
+          uri: lb://user-service
+          order: -100
           predicates:
-            - Path=/**
+            - Path=/admin/users/**
+
+        - id: category_service_admin
+          uri: lb://category-service
+          order: -90
+          predicates:
+            - Path=/admin/categories/**
+
+        - id: category_service_public
+          uri: lb://category-service
+          order: -89
+          predicates:
+            - Path=/categories/**
+
+        - id: compilation_service_admin
+          uri: lb://compilation-service
+          order: -80
+          predicates:
+            - Path=/admin/compilations/**
+
+        - id: compilation_service_public
+          uri: lb://compilation-service
+          order: -79
+          predicates:
+            - Path=/compilations/**
+
+        - id: request_service_event_requests
+          uri: lb://request-service
+          order: -70
+          predicates:
+            - Path=/users/*/events/*/requests/**
+
+        - id: request_service_user_requests
+          uri: lb://request-service
+          order: -69
+          predicates:
+            - Path=/users/*/requests/**
+
+        - id: comment_service_event_comments
+          uri: lb://comment-service
+          order: -60
+          predicates:
+            - Path=/events/*/comments/**
+
+        - id: comment_service_admin
+          uri: lb://comment-service
+          order: -59
+          predicates:
+            - Path=/admin/comments/**
+
+        - id: comment_service_user
+          uri: lb://comment-service
+          order: -58
+          predicates:
+            - Path=/users/comments/**
+
+        - id: comment_service_root
+          uri: lb://comment-service
+          order: -57
+          predicates:
+            - Path=/comments/**
+
+        - id: event_service_admin_events
+          uri: lb://event-service
+          order: -50
+          predicates:
+            - Path=/admin/events/**
+
+        - id: event_service_private_events
+          uri: lb://event-service
+          order: -49
+          predicates:
+            - Path=/users/*/events/**
+
+        - id: event_service_public_events
+          uri: lb://event-service
+          order: -48
+          predicates:
+            - Path=/events/**
 
 server:
   port: 8080
@@ -22,7 +100,7 @@ management:
     enabled-by-default: true
     web:
       exposure:
-        include: health,info
+        include: health,info,gateway
       base-path: /actuator
   endpoint:
     health:

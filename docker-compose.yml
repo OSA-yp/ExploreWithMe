@@ -3,7 +3,7 @@ services:
     build:
       context: ./infra/discovery-server
     ports:
-      - "18761:8761"
+      - "8761:8761"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=8761
@@ -37,6 +37,22 @@ services:
       retries: 5
       start_period: 30s
 
+  postgres:
+    image: postgres:16.1
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - ./infra/postgres/initdb/microservices-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   gateway-server:
     build:
       context: ./infra/gateway-server
@@ -50,6 +66,7 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=8080
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
       - EUREKA_SERVER_HOST=discovery-server
       - EUREKA_SERVER_PORT=8761
@@ -61,35 +78,22 @@ services:
       retries: 5
       start_period: 30s
 
-  stats-db:
-    image: postgres:16.1
-    environment:
-      - POSTGRES_DB=stat-server
-      - POSTGRES_USER=stat-server
-      - POSTGRES_PASSWORD=stat-server
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U stat-server"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   stats-server:
     build:
       context: ./stats-server
     ports:
       - "9090:9090"
-    volumes:
-      - /tmp:/tmp
     depends_on:
       discovery-server:
         condition: service_healthy
       config-server:
         condition: service_healthy
-      stats-db:
+      postgres:
         condition: service_healthy
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=9090
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
       - EUREKA_SERVER_HOST=discovery-server
       - EUREKA_SERVER_PORT=8761
@@ -101,45 +105,171 @@ services:
       retries: 5
       start_period: 150s
 
-  ewm-db:
-    image: postgres:16.1
-    environment:
-      - POSTGRES_DB=ewm-service
-      - POSTGRES_USER=ewm-service
-      - POSTGRES_PASSWORD=ewm-service
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ewm-service"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  ewm-service:
+  user-service:
     build:
-      context: ./main-service
+      context: ./core/user-service
     ports:
-      - "8081:8081"
-    volumes:
-      - /tmp:/tmp
+      - "8083:8083"
     depends_on:
       discovery-server:
         condition: service_healthy
       config-server:
         condition: service_healthy
-      ewm-db:
+      postgres:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8083
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - EUREKA_SERVER_HOST=discovery-server
+      - EUREKA_SERVER_PORT=8761
+      - EUREKA_INSTANCE_HOSTNAME=user-service
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8083/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  category-service:
+    build:
+      context: ./core/category-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8082
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - EUREKA_SERVER_HOST=discovery-server
+      - EUREKA_SERVER_PORT=8761
+      - EUREKA_INSTANCE_HOSTNAME=category-service
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8082/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  request-service:
+    build:
+      context: ./core/request-service
+    ports:
+      - "8085:8085"
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8085
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - EUREKA_SERVER_HOST=discovery-server
+      - EUREKA_SERVER_PORT=8761
+      - EUREKA_INSTANCE_HOSTNAME=request-service
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8085/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  event-service:
+    build:
+      context: ./core/event-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
       stats-server:
         condition: service_healthy
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SERVER_PORT=8081
+      - SERVER_PORT=8084
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
       - EUREKA_SERVER_HOST=discovery-server
       - EUREKA_SERVER_PORT=8761
-      - EUREKA_INSTANCE_HOSTNAME=ewm-service
-      - STATS_SERVER_HOST=stats-server
-      - STATS_SERVER_PORT=9090
+      - EUREKA_INSTANCE_HOSTNAME=event-service
     healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8081/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8084/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+
+  compilation-service:
+    build:
+      context: ./core/compilation-service
+    ports:
+      - "8086:8086"
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      event-service:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8086
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - EUREKA_SERVER_HOST=discovery-server
+      - EUREKA_SERVER_PORT=8761
+      - EUREKA_INSTANCE_HOSTNAME=compilation-service
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8086/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  comment-service:
+    build:
+      context: ./core/comment-service
+    ports:
+      - "8087:8087"
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      event-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8087
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - EUREKA_SERVER_HOST=discovery-server
+      - EUREKA_SERVER_PORT=8761
+      - EUREKA_INSTANCE_HOSTNAME=comment-service
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8087/actuator/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

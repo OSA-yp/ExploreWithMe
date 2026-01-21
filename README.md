@@ -384,3 +384,71 @@ PATH PARAMETERS
 #### Статусы ответов
 * 204 - Комментарий удален
 * 404 - Комментарий не найден
+
+_______________________________________________________
+
+## Архитектура (этап microservices)
+
+На этапе `microservices` проект разделён на инфраструктурные сервисы и доменные микросервисы.
+
+### Инфраструктура
+
+- **Gateway**: `gateway-server` (внешняя точка входа, порт **8080**)
+- **Discovery**: `discovery-server` (Eureka, порт **8761**)
+- **Config**: `config-server` (порт **8888**, native-конфиги из репозитория)
+- **Stats**: `stats-server` (порт **9090**)
+
+### Доменные сервисы
+
+Доменные сервисы расположены в модуле `core/`:
+
+- `core/user-service` — пользователи (`/admin/users/**`) + внутренний API `/internal/users/**`
+- `core/category-service` — категории (`/admin/categories/**`, `/categories/**`) + `/internal/categories/**`
+- `core/event-service` — события (`/admin/events/**`, `/users/*/events/**`, `/events/**`) + `/internal/events/**`
+- `core/request-service` — заявки (`/users/*/requests/**`, `/users/*/events/*/requests/**`) + `/internal/requests/**`
+- `core/compilation-service` — подборки (`/admin/compilations/**`, `/compilations/**`)
+- `core/comment-service` — комментарии (см. раздел выше)
+
+### Где лежат конфигурации
+
+ConfigServer берёт конфиги из:
+
+- `infra/config-server/src/main/resources/config/infra/*` — инфраструктура (в т.ч. маршруты Gateway)
+- `infra/config-server/src/main/resources/config/core/*` — доменные сервисы
+- `infra/config-server/src/main/resources/config/stats-server/*` — статистика
+
+Маршрутизация внешнего API через Gateway описана в:
+
+- `infra/config-server/src/main/resources/config/infra/gateway-server/application.yaml`
+
+### Внутренний API (межсервисный)
+
+Используется Feign + Eureka. Основные внутренние эндпоинты:
+
+- `GET /internal/users/{userId}`, `GET /internal/users?ids=...`
+- `GET /internal/categories/{catId}`, `GET /internal/categories?ids=...`
+- `GET /internal/events/{eventId}`, `GET /internal/events/short?ids=...`, `GET /internal/events/exists-by-category?categoryId=...`
+- `GET /internal/requests/confirmed-count?eventIds=...`
+
+## Запуск локально (docker compose)
+
+1) Собрать проект (jar-файлы нужны для docker build, Dockerfile копирует `target/*.jar`):
+
+```bash
+mvn clean package -DskipTests
+```
+
+2) Поднять микросервисы:
+
+```bash
+docker compose up --build
+```
+
+После старта:
+
+- внешний API: `http://localhost:8080`
+- Eureka: `http://localhost:8761`
+- ConfigServer: `http://localhost:8888`
+- Stats: `http://localhost:9090`
+
+Примечание: в этой ветке запуск рассчитан на микросервисную архитектуру (маршрутизация через Gateway + обнаружение сервисов через Eureka).

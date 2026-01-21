@@ -15,9 +15,9 @@ spring:
       mode: always
   datasource:
     driverClassName: org.postgresql.Driver
-    url: jdbc:postgresql://stats-db:5432/stat-server
-    username: stat-server
-    password: stat-server
+    url: jdbc:postgresql://postgres:5432/ewm_stats_db
+    username: postgres
+    password: password
     hikari:
       connection-timeout: 3000
       max-lifetime: 5
