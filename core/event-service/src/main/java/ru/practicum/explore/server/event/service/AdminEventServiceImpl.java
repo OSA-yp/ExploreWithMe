@@ -111,6 +111,12 @@ public class AdminEventServiceImpl implements AdminEventService {
                 .orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено."));
 
         if (updateRequest.getEventDate() != null) {
+            // Точечная валидация: нельзя установить дату события в прошлом (ожидается 400).
+            // Для сценария публикации правила проверяются ниже и должны возвращать 409.
+            if (updateRequest.getStateAction() != StateAction.PUBLISH_EVENT
+                    && updateRequest.getEventDate().isBefore(LocalDateTime.now())) {
+                throw new ValidationException("Дата начала события не может быть в прошлом.");
+            }
             event.setEventDate(updateRequest.getEventDate());
         }
         if (updateRequest.getTitle() != null) {
