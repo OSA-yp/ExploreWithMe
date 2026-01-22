@@ -1,0 +1,44 @@
+server:
+  port: 8087
+  error:
+    include-binding-errors: always
+
+spring:
+  application:
+    name: comment-service
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: always
+  datasource:
+    driverClassName: org.postgresql.Driver
+    url: jdbc:postgresql://postgres:5432/ewm_comment
+    username: postgres
+    password: password
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://${EUREKA_SERVER_HOST:discovery-server}:${EUREKA_SERVER_PORT:8761}/eureka/
+  instance:
+    preferIpAddress: true
+    hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+    instance-id: "${spring.application.name}:${random.value}"
+
+management:
+  endpoints:
+    enabled-by-default: true
+    web:
+      exposure:
+        include: health,info
+      base-path: /actuator
+  endpoint:
+    health:
+      enabled: true
+      show-details: always
+
