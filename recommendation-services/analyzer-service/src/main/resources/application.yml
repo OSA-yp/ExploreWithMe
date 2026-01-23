@@ -35,7 +35,7 @@ eureka:
     service-url:
       defaultZone: http://discovery-server:8761/eureka/
   instance:
-    hostname: analyzer
+    hostname: localhost
 
 management:
   endpoints:
