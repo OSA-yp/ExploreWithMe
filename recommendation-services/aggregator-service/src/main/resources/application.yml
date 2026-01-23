@@ -10,7 +10,7 @@ spring:
         enabled: true
         serviceId: config-server
   kafka:
-    bootstrap-servers: kafka:29092
+    bootstrap-servers: localhost:9092
 
 eureka:
   client:
