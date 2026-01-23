@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: collector
+  kafka:
+    bootstrap-servers: kafka:29092
+
+grpc:
+  server:
+    port: 0
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://discovery-server:8761/eureka/
+  instance:
+    hostname: collector
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

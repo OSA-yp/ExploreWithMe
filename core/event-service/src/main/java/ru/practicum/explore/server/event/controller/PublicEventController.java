@@ -11,8 +11,10 @@ import ru.practicum.explore.server.event.dto.EventFullDto;
 import ru.practicum.explore.server.event.dto.EventShortDto;
 import ru.practicum.explore.server.event.enums.EventSort;
 import ru.practicum.explore.server.event.service.PublicEventService;
-import ru.practicum.explore.server.utils.HitSender;
+import ru.practicum.CollectorClient;
+import ru.practicum.ewm.stats.proto.ActionTypeProto;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -23,7 +25,7 @@ import java.util.List;
 public class PublicEventController {
 
     private final PublicEventService eventService;
-    private final HitSender hitSender;
+    private final CollectorClient collectorClient;
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
@@ -46,22 +48,51 @@ public class PublicEventController {
         log.info("Запрос публичных событий: text={}, categories={}, paid={}, rangeStart={}, rangeEnd={}, onlyAvailable={}, sort={}, from={}, size={}",
                 text, categories, paid, rangeStart, rangeEnd, onlyAvailable, sort, from, size);
 
-        hitSender.send(request);
+        // Удалена отправка информации о просмотре из GET /events
         List<EventShortDto> events = eventService.getPublicEvents(text, categories, paid, rangeStart, rangeEnd, onlyAvailable, sort, from, size);
         return ResponseEntity.ok(events);
     }
 
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<EventFullDto> getEvent(@PathVariable Long id, HttpServletRequest request) {
+    public ResponseEntity<EventFullDto> getEvent(@PathVariable Long id, 
+                                                 @RequestHeader(value = "X-EWM-USER-ID", required = false) Long userId,
+                                                 HttpServletRequest request) {
         log.info("Запрос события с идентификатором {}", id);
 
-        // Сначала считаем views/confirmedRequests (без учета текущего запроса)
         EventFullDto event = eventService.getPublicEventById(id);
-        // Затем отправляем hit для текущего запроса
-        hitSender.send(request);
+        
+        // Отправка просмотра в Collector
+        if (userId != null) {
+            try {
+                collectorClient.collectUserAction(userId, id, ActionTypeProto.ACTION_VIEW, Instant.now());
+            } catch (Exception e) {
+                log.warn("Не удалось отправить просмотр в Collector: userId={}, eventId={}", userId, id, e);
+                // Не ломаем основной функционал при ошибке
+            }
+        }
 
         return ResponseEntity.ok(event);
+    }
+
+    @GetMapping("/recommendations")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<List<EventShortDto>> getRecommendations(
+            @RequestHeader("X-EWM-USER-ID") Long userId,
+            @RequestParam(defaultValue = "10") int size) {
+        log.info("Запрос рекомендаций для пользователя: userId={}, size={}", userId, size);
+        List<EventShortDto> recommendations = eventService.getRecommendations(userId, size);
+        return ResponseEntity.ok(recommendations);
+    }
+
+    @PutMapping("/{eventId}/like")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<Void> likeEvent(
+            @PathVariable Long eventId,
+            @RequestHeader("X-EWM-USER-ID") Long userId) {
+        log.info("Лайк мероприятия: userId={}, eventId={}", userId, eventId);
+        eventService.likeEvent(userId, eventId);
+        return ResponseEntity.ok().build();
     }
 }
 

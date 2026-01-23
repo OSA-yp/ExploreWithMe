@@ -91,6 +91,8 @@ spring:
           order: -48
           predicates:
             - Path=/events/**
+          filters:
+            - PreserveHostHeader
 
 server:
   port: 8080

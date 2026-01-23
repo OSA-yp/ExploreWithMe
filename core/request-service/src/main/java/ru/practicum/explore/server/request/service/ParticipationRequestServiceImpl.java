@@ -17,7 +17,10 @@ import ru.practicum.explore.server.request.mapper.ParticipationRequestMapper;
 import ru.practicum.explore.server.request.model.ParticipationRequest;
 import ru.practicum.explore.server.request.repository.ParticipationRequestRepository;
 import ru.practicum.explore.server.users.client.UserInternalClient;
+import ru.practicum.CollectorClient;
+import ru.practicum.ewm.stats.proto.ActionTypeProto;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -31,6 +34,7 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
     private final ParticipationRequestRepository participationRequestRepository;
     private final EventInternalClient eventInternalClient;
     private final UserInternalClient userInternalClient;
+    private final CollectorClient collectorClient;
 
     @Override
     public ParticipationRequestDto createRequest(Long userId, Long eventId) {
@@ -75,6 +79,15 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
                 .build();
 
         ParticipationRequest saved = participationRequestRepository.save(toSave);
+        
+        // Отправка регистрации в Collector
+        try {
+            collectorClient.collectUserAction(userId, eventId, ActionTypeProto.ACTION_REGISTER, Instant.now());
+        } catch (Exception e) {
+            log.warn("Не удалось отправить регистрацию в Collector: userId={}, eventId={}", userId, eventId, e);
+            // Не ломаем основной функционал при ошибке
+        }
+        
         return ParticipationRequestMapper.toDto(saved);
     }
 

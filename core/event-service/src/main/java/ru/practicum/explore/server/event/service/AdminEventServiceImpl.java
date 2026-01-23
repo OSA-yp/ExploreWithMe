@@ -8,9 +8,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import ru.practicum.StatsClient;
-import ru.practicum.explore.dto.ViewStatsDto;
-import ru.practicum.explore.dto.ViewsStatsRequest;
+import ru.practicum.AnalyzerClient;
+import ru.practicum.ewm.stats.proto.RecommendedEventProto;
 import ru.practicum.explore.server.category.client.CategoryInternalClient;
 import ru.practicum.explore.server.category.dto.CategoryResponseDto;
 import ru.practicum.explore.server.event.dto.EventFullDto;
@@ -43,7 +42,7 @@ public class AdminEventServiceImpl implements AdminEventService {
     private final CategoryInternalClient categoryInternalClient;
     private final UserInternalClient userInternalClient;
     private final RequestInternalClient requestInternalClient;
-    private final DiscoveryClient discoveryClient;
+    private final AnalyzerClient analyzerClient;
 
     @Override
     public List<EventFullDto> getEvents(List<Long> users, List<EventState> states, List<Long> categories,
@@ -63,7 +62,7 @@ public class AdminEventServiceImpl implements AdminEventService {
 
         List<Long> eventIds = events.stream().map(Event::getId).toList();
         Map<Long, Long> confirmed = safeConfirmedCounts(eventIds);
-        Map<String, Long> views = safeViewsMap(events);
+        Map<Long, Double> ratings = safeRatingsMap(eventIds);
 
         Map<Long, CategoryResponseDto> categoriesMap;
         Set<Long> categoryIds = events.stream().map(Event::getCategoryId).collect(Collectors.toSet());
@@ -92,7 +91,7 @@ public class AdminEventServiceImpl implements AdminEventService {
         final Map<Long, CategoryResponseDto> categoriesFinal = categoriesMap;
         final Map<Long, UserShortDto> usersFinal = usersMap;
         final Map<Long, Long> confirmedFinal = confirmed;
-        final Map<String, Long> viewsFinal = views;
+        final Map<Long, Double> ratingsFinal = ratings;
 
         return events.stream()
                 .map(e -> EventMapper.toEventFullDto(
@@ -100,7 +99,7 @@ public class AdminEventServiceImpl implements AdminEventService {
                         categoriesFinal.get(e.getCategoryId()),
                         usersFinal.get(e.getInitiatorId()),
                         confirmedFinal.getOrDefault(e.getId(), 0L),
-                        viewsFinal.getOrDefault("/events/" + e.getId(), 0L)
+                        ratingsFinal.getOrDefault(e.getId(), 0.0)
                 ))
                 .toList();
     }
@@ -168,10 +167,10 @@ public class AdminEventServiceImpl implements AdminEventService {
         Event saved = eventRepository.save(event);
 
         long confirmed = safeConfirmedCounts(List.of(eventId)).getOrDefault(eventId, 0L);
-        long views = safeViewsForOne(saved);
+        Double rating = safeRatingForOne(saved.getId());
         CategoryResponseDto category = safeCategory(saved.getCategoryId());
         UserShortDto initiator = safeUser(saved.getInitiatorId());
-        return EventMapper.toEventFullDto(saved, category, initiator, confirmed, views);
+        return EventMapper.toEventFullDto(saved, category, initiator, confirmed, rating);
     }
 
     private Map<Long, Long> safeConfirmedCounts(List<Long> eventIds) {
@@ -182,37 +181,28 @@ public class AdminEventServiceImpl implements AdminEventService {
         }
     }
 
-    private Map<String, Long> safeViewsMap(List<Event> events) {
+    private Map<Long, Double> safeRatingsMap(List<Long> eventIds) {
         try {
-            StatsClient statsClient = new StatsClient(discoveryClient, "stats-server");
-            Set<String> uris = events.stream().map(e -> "/events/" + e.getId()).collect(Collectors.toSet());
-            ViewsStatsRequest statsRequest = ViewsStatsRequest.builder()
-                    .uris(uris)
-                    .unique(true)
-                    .build();
-            List<ViewStatsDto> stats = statsClient.getStats(List.of(statsRequest));
-            return stats.stream().collect(Collectors.toMap(ViewStatsDto::getUri, ViewStatsDto::getHits));
+            return analyzerClient.getInteractionsCount(eventIds)
+                    .collect(Collectors.toMap(
+                            RecommendedEventProto::getEventId,
+                            RecommendedEventProto::getScore
+                    ));
         } catch (Exception e) {
+            log.warn("Не удалось получить ratings map из analyzer, возвращаем 0.0. {}", e.getMessage());
             return Map.of();
         }
     }
 
-    private long safeViewsForOne(Event event) {
-        if (event.getPublishedOn() == null) {
-            return 0L;
-        }
+    private Double safeRatingForOne(Long eventId) {
         try {
-            StatsClient statsClient = new StatsClient(discoveryClient, "stats-server");
-            ViewsStatsRequest statsRequest = ViewsStatsRequest.builder()
-                    .uri("/events/" + event.getId())
-                    .start(event.getPublishedOn())
-                    .end(LocalDateTime.now())
-                    .unique(true)
-                    .build();
-            List<ViewStatsDto> stats = statsClient.getStats(List.of(statsRequest));
-            return stats.isEmpty() ? 0L : stats.getFirst().getHits();
+            return analyzerClient.getInteractionsCount(List.of(eventId))
+                    .findFirst()
+                    .map(RecommendedEventProto::getScore)
+                    .orElse(0.0);
         } catch (Exception e) {
-            return 0L;
+            log.warn("Не удалось получить rating из analyzer, возвращаем 0.0. {}", e.getMessage());
+            return 0.0;
         }
     }
 

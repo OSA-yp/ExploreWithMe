@@ -30,6 +30,7 @@
 		<module>stats-server/client</module>
 		<module>stats-server/common-dto</module>
 		<module>stats-server/service</module>
+		<module>recommendation-services</module>
 	</modules>
 
 	<dependencyManagement>

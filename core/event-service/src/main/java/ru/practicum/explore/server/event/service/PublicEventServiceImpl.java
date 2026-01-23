@@ -3,15 +3,15 @@ package ru.practicum.explore.server.event.service;
 import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import ru.practicum.StatsClient;
-import ru.practicum.explore.dto.ViewStatsDto;
-import ru.practicum.explore.dto.ViewsStatsRequest;
+import ru.practicum.AnalyzerClient;
+import ru.practicum.CollectorClient;
+import ru.practicum.ewm.stats.proto.ActionTypeProto;
+import ru.practicum.ewm.stats.proto.RecommendedEventProto;
 import ru.practicum.explore.server.category.client.CategoryInternalClient;
 import ru.practicum.explore.server.category.dto.CategoryResponseDto;
 import ru.practicum.explore.server.event.dto.EventFullDto;
@@ -28,6 +28,7 @@ import ru.practicum.explore.server.request.client.RequestInternalClient;
 import ru.practicum.explore.server.users.client.UserInternalClient;
 import ru.practicum.explore.server.users.dto.UserShortDto;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -41,7 +42,8 @@ public class PublicEventServiceImpl implements PublicEventService {
     private final CategoryInternalClient categoryInternalClient;
     private final UserInternalClient userInternalClient;
     private final RequestInternalClient requestInternalClient;
-    private final DiscoveryClient discoveryClient;
+    private final AnalyzerClient analyzerClient;
+    private final CollectorClient collectorClient;
 
     @Override
     public List<EventShortDto> getPublicEvents(String text, List<Long> categories, Boolean paid,
@@ -73,7 +75,7 @@ public class PublicEventServiceImpl implements PublicEventService {
         List<Long> eventIds = events.stream().map(Event::getId).toList();
 
         Map<Long, Long> confirmedRequests = safeConfirmedCounts(eventIds);
-        Map<String, Long> views = safeViewsMap(events);
+        Map<Long, Double> ratings = safeRatingsMap(eventIds);
 
         Map<Long, CategoryResponseDto> categoriesMap = fetchCategories(events);
         Map<Long, UserShortDto> usersMap = fetchUsers(events);
@@ -96,7 +98,7 @@ public class PublicEventServiceImpl implements PublicEventService {
                         requireCategory(categoriesMap, event.getCategoryId()),
                         requireUser(usersMap, event.getInitiatorId()),
                         confirmedRequests.getOrDefault(event.getId(), 0L),
-                        views.getOrDefault("/events/" + event.getId(), 0L)
+                        ratings.getOrDefault(event.getId(), 0.0)
                 ))
                 .collect(Collectors.toList());
     }
@@ -107,12 +109,12 @@ public class PublicEventServiceImpl implements PublicEventService {
                 .orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено."));
 
         long confirmedRequests = safeConfirmedCounts(List.of(eventId)).getOrDefault(eventId, 0L);
-        long views = safeViewsForOne(event);
+        Double rating = safeRatingForOne(eventId);
 
         CategoryResponseDto category = safeCategory(event.getCategoryId());
         UserShortDto initiator = safeUser(event.getInitiatorId());
 
-        return EventMapper.toEventFullDto(event, category, initiator, confirmedRequests, views);
+        return EventMapper.toEventFullDto(event, category, initiator, confirmedRequests, rating);
     }
 
     private Sort getSort(EventSort sort) {
@@ -129,38 +131,27 @@ public class PublicEventServiceImpl implements PublicEventService {
         }
     }
 
-    private long safeViewsForOne(Event event) {
-        if (event.getPublishedOn() == null) {
-            return 0L;
-        }
+    private Double safeRatingForOne(Long eventId) {
         try {
-            StatsClient statsClient = new StatsClient(discoveryClient, "stats-server");
-            ViewsStatsRequest statsRequest = ViewsStatsRequest.builder()
-                    .uri("/events/" + event.getId())
-                    .start(event.getPublishedOn())
-                    .end(LocalDateTime.now())
-                    .unique(true)
-                    .build();
-            List<ViewStatsDto> stats = statsClient.getStats(List.of(statsRequest));
-            return stats.isEmpty() ? 0L : stats.getFirst().getHits();
+            return analyzerClient.getInteractionsCount(List.of(eventId))
+                    .findFirst()
+                    .map(RecommendedEventProto::getScore)
+                    .orElse(0.0);
         } catch (Exception e) {
-            log.warn("Не удалось получить views из stats-server, возвращаем 0. {}", e.getMessage());
-            return 0L;
+            log.warn("Не удалось получить rating из analyzer, возвращаем 0.0. {}", e.getMessage());
+            return 0.0;
         }
     }
 
-    private Map<String, Long> safeViewsMap(List<Event> events) {
+    private Map<Long, Double> safeRatingsMap(List<Long> eventIds) {
         try {
-            StatsClient statsClient = new StatsClient(discoveryClient, "stats-server");
-            Set<String> uris = events.stream().map(e -> "/events/" + e.getId()).collect(Collectors.toSet());
-            ViewsStatsRequest statsRequest = ViewsStatsRequest.builder()
-                    .uris(uris)
-                    .unique(true)
-                    .build();
-            List<ViewStatsDto> stats = statsClient.getStats(List.of(statsRequest));
-            return stats.stream().collect(Collectors.toMap(ViewStatsDto::getUri, ViewStatsDto::getHits));
+            return analyzerClient.getInteractionsCount(eventIds)
+                    .collect(Collectors.toMap(
+                            RecommendedEventProto::getEventId,
+                            RecommendedEventProto::getScore
+                    ));
         } catch (Exception e) {
-            log.warn("Не удалось получить views map из stats-server, возвращаем 0. {}", e.getMessage());
+            log.warn("Не удалось получить ratings map из analyzer, возвращаем 0.0. {}", e.getMessage());
             return Map.of();
         }
     }
@@ -222,5 +213,75 @@ public class PublicEventServiceImpl implements PublicEventService {
             return UserShortDto.builder().id(userId).name("unknown").build();
         }
     }
-}
 
+    @Override
+    public List<EventShortDto> getRecommendations(Long userId, int size) {
+        try {
+            var recommendations = analyzerClient.getRecommendationsForUser(userId, size)
+                    .toList();
+
+            if (recommendations.isEmpty()) {
+                return List.of();
+            }
+
+            List<Long> eventIds = recommendations.stream()
+                    .map(RecommendedEventProto::getEventId)
+                    .toList();
+
+            List<Event> events = eventRepository.findAllById(eventIds);
+            if (events.isEmpty()) {
+                return List.of();
+            }
+
+            Map<Long, Long> confirmedRequests = safeConfirmedCounts(eventIds);
+            Map<Long, CategoryResponseDto> categoriesMap = fetchCategories(events);
+            Map<Long, UserShortDto> usersMap = fetchUsers(events);
+            Map<Long, Double> ratingsMap = recommendations.stream()
+                    .collect(Collectors.toMap(
+                            RecommendedEventProto::getEventId,
+                            RecommendedEventProto::getScore
+                    ));
+
+            return events.stream()
+                    .map(event -> EventMapper.toEventShortDto(
+                            event,
+                            requireCategory(categoriesMap, event.getCategoryId()),
+                            requireUser(usersMap, event.getInitiatorId()),
+                            confirmedRequests.getOrDefault(event.getId(), 0L),
+                            ratingsMap.getOrDefault(event.getId(), 0.0)
+                    ))
+                    .toList();
+        } catch (Exception e) {
+            log.error("Error getting recommendations for user: userId={}, size={}", userId, size, e);
+            return List.of();
+        }
+    }
+
+    @Override
+    public void likeEvent(Long userId, Long eventId) {
+        // Проверить, что мероприятие существует и опубликовано
+        Event event = eventRepository.findPublishedEventById(eventId)
+                .orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено."));
+
+        // Проверить, что пользователь просматривал мероприятие
+        try {
+            boolean hasInteracted = analyzerClient.hasUserInteractedWithEvent(userId, eventId);
+            if (!hasInteracted) {
+                throw new ValidationException("Пользователь должен просмотреть мероприятие перед тем, как поставить лайк.");
+            }
+        } catch (ValidationException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("Не удалось проверить взаимодействие пользователя с мероприятием: userId={}, eventId={}", userId, eventId, e);
+            // Продолжаем выполнение, если проверка не удалась
+        }
+
+        // Отправить лайк в Collector
+        try {
+            collectorClient.collectUserAction(userId, eventId, ActionTypeProto.ACTION_LIKE, Instant.now());
+        } catch (Exception e) {
+            log.error("Не удалось отправить лайк в Collector: userId={}, eventId={}", userId, eventId, e);
+            throw new AppException("Не удалось обработать лайк", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+}

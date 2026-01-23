@@ -9,9 +9,13 @@ import java.util.List;
 
 public interface PublicEventService {
     List<EventShortDto> getPublicEvents(String text, List<Long> categories, Boolean paid,
-                                        LocalDateTime rangeStart, LocalDateTime rangeEnd,
-                                        Boolean onlyAvailable, EventSort sort, int from, int size);
+                                         LocalDateTime rangeStart, LocalDateTime rangeEnd,
+                                         Boolean onlyAvailable, EventSort sort, int from, int size);
 
     EventFullDto getPublicEventById(Long eventId);
+
+    List<EventShortDto> getRecommendations(Long userId, int size);
+
+    void likeEvent(Long userId, Long eventId);
 }
 

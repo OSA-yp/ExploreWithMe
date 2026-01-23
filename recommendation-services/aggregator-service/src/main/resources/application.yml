@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: aggregator
+  config:
+    import: "optional:configserver:"
+  cloud:
+    config:
+      fail-fast: false
+      discovery:
+        enabled: true
+        serviceId: config-server
+  kafka:
+    bootstrap-servers: kafka:29092
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://discovery-server:8761/eureka/
+  instance:
+    hostname: aggregator
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
