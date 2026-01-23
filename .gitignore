@@ -24,3 +24,7 @@ logs/
 *.iws
 *.iml
 *.ipr
+
+### Node.js ###
+node_modules/
+package-lock.json
