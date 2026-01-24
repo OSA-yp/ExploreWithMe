@@ -21,7 +21,7 @@ public class EventSimilarityConsumer {
 
     private final EventSimilarityRepository repository;
 
-    @KafkaListener(topics = SIMILARITY_TOPIC, groupId = "analyzer-group")
+    @KafkaListener(topics = SIMILARITY_TOPIC, groupId = "analyzer-group", containerFactory = "eventSimilarityKafkaListenerContainerFactory")
     @Transactional
     public void consume(EventSimilarityAvro similarity) {
         try {

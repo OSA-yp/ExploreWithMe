@@ -24,7 +24,7 @@ public class UserActionConsumer {
     private final UserEventInteractionRepository repository;
     private final ActionWeightService actionWeightService;
 
-    @KafkaListener(topics = USER_ACTIONS_TOPIC, groupId = "analyzer-group")
+    @KafkaListener(topics = USER_ACTIONS_TOPIC, groupId = "analyzer-group", containerFactory = "userActionKafkaListenerContainerFactory")
     @Transactional
     public void consume(UserActionAvro userAction) {
         try {
