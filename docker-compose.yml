@@ -328,7 +328,6 @@ services:
         condition: service_healthy
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SERVER_PORT=8080
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
@@ -397,3 +396,36 @@ services:
       timeout: 5s
       retries: 5
       start_period: 120s
+
+  tester:
+    image: eclipse-temurin:21-jre
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      collector-service:
+        condition: service_healthy
+      aggregator-service:
+        condition: service_healthy
+      analyzer-service:
+        condition: service_healthy
+    volumes:
+      - ./specs/workflows/stuff/tester-0.0.1.jar:/app/tester.jar:ro
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+    environment:
+      - STATS_TEST_MODE=${STATS_TEST_MODE:-ANALYZE}
+      - PRINT_LOGS=${PRINT_LOGS:-false}
+      - VERBOSE_MODE=${VERBOSE_MODE:-false}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+    command: >
+      sh -c "
+        java -jar /app/tester.jar
+        --tester.execution.mode=$${STATS_TEST_MODE:-ANALYZE}
+        --tester.execution.immediate-logging.enabled=$${PRINT_LOGS:-false}
+        --tester.execution.output.trace-enabled=$${VERBOSE_MODE:-false}
+        --tester.execution.output.print=true
+        --tester.execution.output.file=true
+        --tester.execution.output.file-path=/app/reports/execution-report.txt
+        --eureka.client.serviceUrl.defaultZone=http://discovery-server:8761/eureka/
+      "
+    working_dir: /app

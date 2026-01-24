@@ -5,8 +5,7 @@ import org.apache.avro.io.DatumReader;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Deserializer;
-import org.apache.kafka.common.serialization.LongDeserializer;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -18,24 +17,23 @@ import ru.practicum.ewm.stats.avro.UserActionAvro;
 import org.apache.avro.io.DecoderFactory;
 
 import java.io.ByteArrayInputStream;
-import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
 public class KafkaConfig {
 
-    @Value("${spring.kafka.bootstrap-servers}")
-    private String bootstrapServers;
+    private final KafkaProperties kafkaProperties;
+
+    public KafkaConfig(KafkaProperties kafkaProperties) {
+        this.kafkaProperties = kafkaProperties;
+    }
 
     @Bean
     public ConsumerFactory<Long, UserActionAvro> userActionConsumerFactory() {
-        Map<String, Object> configProps = new HashMap<>();
-        configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        // group-id, auto-offset-reset и key-deserializer берутся из конфигурации (spring.kafka.consumer.*)
-        configProps.put(ConsumerConfig.GROUP_ID_CONFIG, "analyzer-group");
-        configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class);
+        // Получаем все настройки из конфигурации (bootstrap-servers, group-id, auto-offset-reset, key-deserializer)
+        Map<String, Object> configProps = kafkaProperties.buildConsumerProperties();
+        // Переопределяем только value-deserializer на кастомный Avro
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, UserActionAvroDeserializer.class);
-        configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
 
@@ -48,13 +46,10 @@ public class KafkaConfig {
 
     @Bean
     public ConsumerFactory<Long, EventSimilarityAvro> eventSimilarityConsumerFactory() {
-        Map<String, Object> configProps = new HashMap<>();
-        configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        // group-id, auto-offset-reset и key-deserializer берутся из конфигурации (spring.kafka.consumer.*)
-        configProps.put(ConsumerConfig.GROUP_ID_CONFIG, "analyzer-group");
-        configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class);
+        // Получаем все настройки из конфигурации (bootstrap-servers, group-id, auto-offset-reset, key-deserializer)
+        Map<String, Object> configProps = kafkaProperties.buildConsumerProperties();
+        // Переопределяем только value-deserializer на кастомный Avro
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, EventSimilarityAvroDeserializer.class);
-        configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
 
