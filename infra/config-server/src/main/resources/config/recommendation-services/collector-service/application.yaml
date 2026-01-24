@@ -25,10 +25,11 @@ spring:
         retry.backoff.ms: 1000
         reconnect.backoff.ms: 50
         reconnect.backoff.max.ms: 1000
-        connections.max.idle.ms: 540000
+        connections.max.idle.ms: 30000
         request.timeout.ms: 30000
         delivery.timeout.ms: 120000
         max.block.ms: 60000
+        metadata.max.age.ms: 30000  
 
 grpc:
   server:
