@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: aggregator
+  kafka:
+    bootstrap-servers: kafka:29092
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://discovery-server:8761/eureka/
+  instance:
+    hostname: aggregator-service
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
