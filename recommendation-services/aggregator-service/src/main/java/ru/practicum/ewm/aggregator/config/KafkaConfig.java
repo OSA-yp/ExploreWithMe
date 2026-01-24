@@ -34,10 +34,18 @@ public class KafkaConfig {
 
     @Bean
     public ConsumerFactory<Long, UserActionAvro> consumerFactory() {
-        // Получаем все настройки из конфигурации (bootstrap-servers, group-id, auto-offset-reset, key-deserializer)
+        // Получаем базовые настройки из конфигурации
         Map<String, Object> configProps = kafkaProperties.buildConsumerProperties();
+        
+        // Явно добавляем свойства из spring.kafka.consumer.properties.*
+        if (kafkaProperties.getConsumer().getProperties() != null) {
+            configProps.putAll(kafkaProperties.getConsumer().getProperties());
+        }
+        
         // Переопределяем только value-deserializer на кастомный Avro
-        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, AvroDeserializer.class);
+        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, 
+            AvroDeserializer.class.getName());
+        
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
 
@@ -50,10 +58,19 @@ public class KafkaConfig {
 
     @Bean
     public ProducerFactory<Long, EventSimilarityAvro> producerFactory() {
-        // Получаем все настройки из конфигурации (bootstrap-servers, key-serializer, properties.*)
+        // Получаем базовые настройки из конфигурации
         Map<String, Object> configProps = kafkaProperties.buildProducerProperties();
+        
+        // Явно добавляем свойства из spring.kafka.producer.properties.*
+        if (kafkaProperties.getProducer().getProperties() != null) {
+            configProps.putAll(kafkaProperties.getProducer().getProperties());
+        }
+        
         // Переопределяем только value-serializer на кастомный Avro
-        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, AvroSerializer.class);
+        // ВАЖНО: использовать строку с полным именем класса, а не класс напрямую
+        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, 
+            AvroSerializer.class.getName());
+        
         return new DefaultKafkaProducerFactory<>(configProps);
     }
 

@@ -28,10 +28,18 @@ public class KafkaConfig {
 
     @Bean
     public ProducerFactory<Long, UserActionAvro> producerFactory() {
-        // Получаем все настройки из конфигурации (bootstrap-servers, key-serializer, properties.*)
+        // Получаем базовые настройки из конфигурации
         Map<String, Object> configProps = kafkaProperties.buildProducerProperties();
+        
+        // Явно добавляем свойства из spring.kafka.producer.properties.*
+        if (kafkaProperties.getProducer().getProperties() != null) {
+            configProps.putAll(kafkaProperties.getProducer().getProperties());
+        }
+        
         // Переопределяем только value-serializer на кастомный Avro
-        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, AvroSerializer.class);
+        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, 
+            AvroSerializer.class.getName());
+        
         return new DefaultKafkaProducerFactory<>(configProps);
     }
 

@@ -30,10 +30,18 @@ public class KafkaConfig {
 
     @Bean
     public ConsumerFactory<Long, UserActionAvro> userActionConsumerFactory() {
-        // Получаем все настройки из конфигурации (bootstrap-servers, group-id, auto-offset-reset, key-deserializer)
+        // Получаем базовые настройки из конфигурации
         Map<String, Object> configProps = kafkaProperties.buildConsumerProperties();
+        
+        // Явно добавляем свойства из spring.kafka.consumer.properties.*
+        if (kafkaProperties.getConsumer().getProperties() != null) {
+            configProps.putAll(kafkaProperties.getConsumer().getProperties());
+        }
+        
         // Переопределяем только value-deserializer на кастомный Avro
-        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, UserActionAvroDeserializer.class);
+        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, 
+            UserActionAvroDeserializer.class.getName());
+        
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
 
@@ -46,10 +54,19 @@ public class KafkaConfig {
 
     @Bean
     public ConsumerFactory<Long, EventSimilarityAvro> eventSimilarityConsumerFactory() {
-        // Получаем все настройки из конфигурации (bootstrap-servers, group-id, auto-offset-reset, key-deserializer)
+        // Получаем базовые настройки из конфигурации
         Map<String, Object> configProps = kafkaProperties.buildConsumerProperties();
+        
+        // Явно добавляем свойства из spring.kafka.consumer.properties.*
+        if (kafkaProperties.getConsumer().getProperties() != null) {
+            configProps.putAll(kafkaProperties.getConsumer().getProperties());
+        }
+        
         // Переопределяем только value-deserializer на кастомный Avro
-        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, EventSimilarityAvroDeserializer.class);
+        // ВАЖНО: использовать строку с полным именем класса, а не класс напрямую
+        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, 
+            EventSimilarityAvroDeserializer.class.getName());
+        
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
 
