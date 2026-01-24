@@ -36,6 +36,10 @@ public class KafkaConfig {
             configProps.putAll(kafkaProperties.getProducer().getProperties());
         }
         
+        // Переопределяем key-serializer на LongSerializer
+        configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, 
+            "org.apache.kafka.common.serialization.LongSerializer");
+        
         // Переопределяем только value-serializer на кастомный Avro
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, 
             AvroSerializer.class.getName());

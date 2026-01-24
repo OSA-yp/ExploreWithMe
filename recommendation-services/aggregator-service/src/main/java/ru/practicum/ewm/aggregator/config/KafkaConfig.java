@@ -42,6 +42,10 @@ public class KafkaConfig {
             configProps.putAll(kafkaProperties.getConsumer().getProperties());
         }
         
+        // Переопределяем key-deserializer на LongDeserializer
+        configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, 
+            "org.apache.kafka.common.serialization.LongDeserializer");
+        
         // Переопределяем только value-deserializer на кастомный Avro
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, 
             AvroDeserializer.class.getName());
@@ -65,6 +69,10 @@ public class KafkaConfig {
         if (kafkaProperties.getProducer().getProperties() != null) {
             configProps.putAll(kafkaProperties.getProducer().getProperties());
         }
+        
+        // Переопределяем key-serializer на LongSerializer
+        configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, 
+            "org.apache.kafka.common.serialization.LongSerializer");
         
         // Переопределяем только value-serializer на кастомный Avro
         // ВАЖНО: использовать строку с полным именем класса, а не класс напрямую
