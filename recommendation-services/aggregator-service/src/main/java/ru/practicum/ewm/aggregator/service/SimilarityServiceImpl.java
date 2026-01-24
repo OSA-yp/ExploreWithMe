@@ -3,7 +3,9 @@ package ru.practicum.ewm.aggregator.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -19,6 +21,12 @@ public class SimilarityServiceImpl implements SimilarityService {
     
     // eventA -> eventB -> S_min
     private final Map<Long, Map<Long, Double>> minWeightsSums = new HashMap<>();
+    
+    // eventA -> eventB -> previousSimilarity
+    private final Map<Long, Map<Long, Double>> previousSimilarities = new HashMap<>();
+    
+    // eventId -> List of changed pairs (eventA, eventB)
+    private final Map<Long, List<Pair<Long, Long>>> changedSimilarities = new HashMap<>();
 
     @Override
     public void updateWeights(long userId, long eventId, double actionWeight) {
@@ -54,6 +62,8 @@ public class SimilarityServiceImpl implements SimilarityService {
             return;
         }
         
+        List<Pair<Long, Long>> changedPairs = new ArrayList<>();
+        
         for (Long otherEventId : allEventIds) {
             if (otherEventId.equals(eventId)) {
                 continue;
@@ -61,6 +71,27 @@ public class SimilarityServiceImpl implements SimilarityService {
 
             // Пересчитать S_min для пары (eventId, otherEventId)
             recalculateMinWeightsSum(eventId, otherEventId, userWeightsForEvent);
+            
+            // Вычислить новую схожесть
+            double newSimilarity = calculateSimilarity(eventId, otherEventId);
+            
+            // Получить предыдущую схожесть
+            long first = Math.min(eventId, otherEventId);
+            long second = Math.max(eventId, otherEventId);
+            double previousSimilarity = previousSimilarities
+                    .computeIfAbsent(first, k -> new HashMap<>())
+                    .getOrDefault(second, 0.0);
+            
+            // Если схожесть изменилась, добавить в список измененных
+            if (Math.abs(newSimilarity - previousSimilarity) > 1e-9) {
+                changedPairs.add(new Pair<>(first, second));
+                previousSimilarities.get(first).put(second, newSimilarity);
+            }
+        }
+        
+        // Сохранить список измененных пар для этого eventId
+        if (!changedPairs.isEmpty()) {
+            changedSimilarities.put(eventId, changedPairs);
         }
     }
 
@@ -113,5 +144,15 @@ public class SimilarityServiceImpl implements SimilarityService {
 
     public Set<Long> getAllEventIds() {
         return eventUserWeights.keySet();
+    }
+    
+    @Override
+    public List<Pair<Long, Long>> getChangedSimilarities(long eventId) {
+        return changedSimilarities.getOrDefault(eventId, new ArrayList<>());
+    }
+    
+    @Override
+    public void clearChangedSimilarities(long eventId) {
+        changedSimilarities.remove(eventId);
     }
 }

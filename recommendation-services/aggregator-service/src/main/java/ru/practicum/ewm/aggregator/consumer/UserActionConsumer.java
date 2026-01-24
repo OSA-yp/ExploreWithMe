@@ -10,8 +10,10 @@ import ru.practicum.ewm.aggregator.service.SimilarityService;
 import ru.practicum.ewm.stats.avro.EventSimilarityAvro;
 import ru.practicum.ewm.stats.avro.UserActionAvro;
 
+import ru.practicum.ewm.aggregator.service.SimilarityService.Pair;
+
 import java.time.Instant;
-import java.util.Set;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -32,28 +34,24 @@ public class UserActionConsumer {
                     userAction.getUserId(), userAction.getEventId(), userAction.getActionType());
 
             double actionWeight = actionWeightService.getWeight(userAction.getActionType());
+            long eventId = userAction.getEventId();
+            
             similarityService.updateWeights(
                     userAction.getUserId(),
-                    userAction.getEventId(),
+                    eventId,
                     actionWeight
             );
 
-            // Вычислить сходство для всех пар с этим мероприятием
-            long eventId = userAction.getEventId();
-            Set<Long> allEventIds = similarityService.getAllEventIds();
+            // Получить только измененные пары схожести
+            List<Pair<Long, Long>> changedPairs = similarityService.getChangedSimilarities(eventId);
 
-            for (Long otherEventId : allEventIds) {
-                if (otherEventId.equals(eventId)) {
-                    continue;
-                }
-
-                double similarity = similarityService.calculateSimilarity(eventId, otherEventId);
+            for (Pair<Long, Long> pair : changedPairs) {
+                long eventA = pair.getFirst();
+                long eventB = pair.getSecond();
+                
+                double similarity = similarityService.calculateSimilarity(eventA, eventB);
                 
                 if (similarity > 0.0) {
-                    // Упорядочить идентификаторы
-                    long eventA = Math.min(eventId, otherEventId);
-                    long eventB = Math.max(eventId, otherEventId);
-
                     EventSimilarityAvro similarityMessage = EventSimilarityAvro.newBuilder()
                             .setEventA(eventA)
                             .setEventB(eventB)
@@ -65,6 +63,9 @@ public class UserActionConsumer {
                     log.debug("Sent similarity: eventA={}, eventB={}, score={}", eventA, eventB, similarity);
                 }
             }
+            
+            // Очистить список измененных пар после отправки
+            similarityService.clearChangedSimilarities(eventId);
         } catch (Exception e) {
             log.error("Error processing user action", e);
         }
