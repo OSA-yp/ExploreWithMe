@@ -20,6 +20,10 @@ spring:
         serviceId: config-server
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: analyzer-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.LongDeserializer
   jpa:
     hibernate:
       ddl-auto: none

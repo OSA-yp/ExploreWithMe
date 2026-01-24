@@ -15,6 +15,7 @@ import org.apache.kafka.common.serialization.Serializer;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
 import ru.practicum.ewm.stats.avro.EventSimilarityAvro;
@@ -83,6 +84,7 @@ public class KafkaConfig {
     }
 
     @Bean
+    @Lazy
     public KafkaTemplate<Long, EventSimilarityAvro> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
     }
