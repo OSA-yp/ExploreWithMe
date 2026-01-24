@@ -1,8 +1,15 @@
+server:
+  port: 8080
+
 spring:
   application:
     name: analyzer
   kafka:
     bootstrap-servers: kafka:29092
+    consumer:
+      group-id: analyzer-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.LongDeserializer
   jpa:
     hibernate:
       ddl-auto: none

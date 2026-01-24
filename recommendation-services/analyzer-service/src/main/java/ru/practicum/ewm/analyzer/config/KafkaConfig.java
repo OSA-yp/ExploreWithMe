@@ -31,6 +31,7 @@ public class KafkaConfig {
     public ConsumerFactory<Long, UserActionAvro> userActionConsumerFactory() {
         Map<String, Object> configProps = new HashMap<>();
         configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        // group-id, auto-offset-reset и key-deserializer берутся из конфигурации (spring.kafka.consumer.*)
         configProps.put(ConsumerConfig.GROUP_ID_CONFIG, "analyzer-group");
         configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class);
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, UserActionAvroDeserializer.class);
@@ -49,6 +50,7 @@ public class KafkaConfig {
     public ConsumerFactory<Long, EventSimilarityAvro> eventSimilarityConsumerFactory() {
         Map<String, Object> configProps = new HashMap<>();
         configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        // group-id, auto-offset-reset и key-deserializer берутся из конфигурации (spring.kafka.consumer.*)
         configProps.put(ConsumerConfig.GROUP_ID_CONFIG, "analyzer-group");
         configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class);
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, EventSimilarityAvroDeserializer.class);

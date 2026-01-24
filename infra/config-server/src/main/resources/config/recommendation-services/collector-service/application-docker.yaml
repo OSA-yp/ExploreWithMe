@@ -1,8 +1,13 @@
+server:
+  port: 8080
+
 spring:
   application:
     name: collector
   kafka:
     bootstrap-servers: kafka:29092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.LongSerializer
 
 grpc:
   server:

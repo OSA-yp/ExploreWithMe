@@ -29,7 +29,9 @@ public class KafkaConfig {
     public ProducerFactory<Long, UserActionAvro> producerFactory() {
         Map<String, Object> configProps = new HashMap<>();
         configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        // key-serializer берется из конфигурации (spring.kafka.producer.key-serializer)
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer.class);
+        // value-serializer остается кастомным
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, AvroSerializer.class);
         return new DefaultKafkaProducerFactory<>(configProps);
     }

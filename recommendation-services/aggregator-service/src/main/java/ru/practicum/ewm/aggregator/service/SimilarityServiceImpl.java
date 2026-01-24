@@ -69,23 +69,23 @@ public class SimilarityServiceImpl implements SimilarityService {
                 continue;
             }
 
-            // Пересчитать S_min для пары (eventId, otherEventId)
-            recalculateMinWeightsSum(eventId, otherEventId, userWeightsForEvent);
-            
-            // Вычислить новую схожесть
-            double newSimilarity = calculateSimilarity(eventId, otherEventId);
-            
-            // Получить предыдущую схожесть
+            // Сохранить предыдущую схожесть перед пересчетом
             long first = Math.min(eventId, otherEventId);
             long second = Math.max(eventId, otherEventId);
             double previousSimilarity = previousSimilarities
                     .computeIfAbsent(first, k -> new HashMap<>())
                     .getOrDefault(second, 0.0);
             
+            // Пересчитать S_min для пары (eventId, otherEventId)
+            recalculateMinWeightsSum(eventId, otherEventId, userWeightsForEvent);
+            
+            // Вычислить новую схожесть
+            double newSimilarity = calculateSimilarity(eventId, otherEventId);
+            
             // Если схожесть изменилась, добавить в список измененных
             if (Math.abs(newSimilarity - previousSimilarity) > 1e-9) {
                 changedPairs.add(new Pair<>(first, second));
-                previousSimilarities.get(first).put(second, newSimilarity);
+                previousSimilarities.computeIfAbsent(first, k -> new HashMap<>()).put(second, newSimilarity);
             }
         }
         

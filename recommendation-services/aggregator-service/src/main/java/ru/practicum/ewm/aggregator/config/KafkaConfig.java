@@ -37,6 +37,7 @@ public class KafkaConfig {
     public ConsumerFactory<Long, UserActionAvro> consumerFactory() {
         Map<String, Object> configProps = new HashMap<>();
         configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        // group-id, auto-offset-reset и key-deserializer берутся из конфигурации (spring.kafka.consumer.*)
         configProps.put(ConsumerConfig.GROUP_ID_CONFIG, "aggregator-group");
         configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class);
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, AvroDeserializer.class);
@@ -55,7 +56,9 @@ public class KafkaConfig {
     public ProducerFactory<Long, EventSimilarityAvro> producerFactory() {
         Map<String, Object> configProps = new HashMap<>();
         configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        // key-serializer берется из конфигурации (spring.kafka.producer.key-serializer)
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer.class);
+        // value-serializer остается кастомным
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, AvroSerializer.class);
         return new DefaultKafkaProducerFactory<>(configProps);
     }

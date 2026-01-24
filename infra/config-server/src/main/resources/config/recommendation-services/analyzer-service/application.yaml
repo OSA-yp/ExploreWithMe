@@ -1,8 +1,24 @@
 spring:
   application:
     name: analyzer
+  cloud:
+    config:
+      fail-fast: false
+      retry:
+        useRandomPolicy: true
+        initial-interval: 1000
+        max-interval: 30000
+        multiplier: 1.5
+        max-attempts: 0
+      discovery:
+        enabled: true
+        serviceId: config-server
   kafka:
     bootstrap-servers: localhost:9092
+    consumer:
+      group-id: analyzer-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.LongDeserializer
   jpa:
     hibernate:
       ddl-auto: none
@@ -27,7 +43,7 @@ eureka:
     service-url:
       defaultZone: http://discovery-server:8761/eureka/
   instance:
-    hostname: localhost
+    hostname: analyzer-service
 
 management:
   endpoints:

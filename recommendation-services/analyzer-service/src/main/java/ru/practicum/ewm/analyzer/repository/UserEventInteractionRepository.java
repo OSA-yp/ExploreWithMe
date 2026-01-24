@@ -18,7 +18,7 @@ public interface UserEventInteractionRepository extends JpaRepository<UserEventI
     @Query("SELECT uei FROM UserEventInteraction uei WHERE uei.userId = :userId AND uei.eventId IN :eventIds")
     List<UserEventInteraction> findByUserIdAndEventIdIn(@Param("userId") Long userId, @Param("eventIds") List<Long> eventIds);
 
-    @Query("SELECT uei.eventId, SUM(uei.maxWeight) FROM UserEventInteraction uei WHERE uei.eventId IN :eventIds GROUP BY uei.eventId")
+    @Query(value = "SELECT event_id, SUM(max_weight) FROM user_event_interactions WHERE event_id IN :eventIds GROUP BY event_id", nativeQuery = true)
     List<Object[]> sumMaxWeightsByEventId(@Param("eventIds") List<Long> eventIds);
 
     boolean existsByUserIdAndEventId(Long userId, Long eventId);
