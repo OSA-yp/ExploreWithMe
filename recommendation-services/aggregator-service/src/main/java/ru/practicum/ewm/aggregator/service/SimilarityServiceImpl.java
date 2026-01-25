@@ -22,9 +22,6 @@ public class SimilarityServiceImpl implements SimilarityService {
     // eventA -> eventB -> S_min
     private final Map<Long, Map<Long, Double>> minWeightsSums = new HashMap<>();
     
-    // eventA -> eventB -> previousSimilarity
-    private final Map<Long, Map<Long, Double>> previousSimilarities = new HashMap<>();
-    
     // eventId -> List of changed pairs (eventA, eventB)
     private final Map<Long, List<Pair<Long, Long>>> changedSimilarities = new HashMap<>();
 
@@ -50,11 +47,11 @@ public class SimilarityServiceImpl implements SimilarityService {
         // Обновить общую сумму весов для мероприятия
         eventTotalWeights.merge(eventId, weightDiff, Double::sum);
 
-        // Пересчитать сходство для всех пар с этим мероприятием
-        recalculateSimilarities(eventId, weightDiff);
+        // Пересчитать сходство для пар, где текущий пользователь взаимодействовал с обоими мероприятиями
+        recalculateSimilarities(eventId, userId);
     }
 
-    private void recalculateSimilarities(long eventId, double weightDiff) {
+    private void recalculateSimilarities(long eventId, long userId) {
         Set<Long> allEventIds = eventUserWeights.keySet();
         Map<Long, Double> userWeightsForEvent = eventUserWeights.get(eventId);
         
@@ -69,24 +66,21 @@ public class SimilarityServiceImpl implements SimilarityService {
                 continue;
             }
 
-            // Сохранить предыдущую схожесть перед пересчетом
+            // Проверяем, взаимодействовал ли текущий пользователь с otherEventId
+            Map<Long, Double> otherEventWeights = eventUserWeights.get(otherEventId);
+            if (otherEventWeights == null || !otherEventWeights.containsKey(userId)) {
+                // Пользователь не взаимодействовал с otherEventId - S_min не изменится
+                continue;
+            }
+
             long first = Math.min(eventId, otherEventId);
             long second = Math.max(eventId, otherEventId);
-            double previousSimilarity = previousSimilarities
-                    .computeIfAbsent(first, k -> new HashMap<>())
-                    .getOrDefault(second, 0.0);
             
             // Пересчитать S_min для пары (eventId, otherEventId)
             recalculateMinWeightsSum(eventId, otherEventId, userWeightsForEvent);
             
-            // Вычислить новую схожесть
-            double newSimilarity = calculateSimilarity(eventId, otherEventId);
-            
-            // Если схожесть изменилась, добавить в список измененных
-            if (Math.abs(newSimilarity - previousSimilarity) > 1e-9) {
-                changedPairs.add(new Pair<>(first, second));
-                previousSimilarities.computeIfAbsent(first, k -> new HashMap<>()).put(second, newSimilarity);
-            }
+            // Добавить пару в список измененных
+            changedPairs.add(new Pair<>(first, second));
         }
         
         // Сохранить список измененных пар для этого eventId
