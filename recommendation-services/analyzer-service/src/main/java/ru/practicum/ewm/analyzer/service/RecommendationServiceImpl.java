@@ -27,20 +27,34 @@ public class RecommendationServiceImpl implements RecommendationService {
     @Override
     @Transactional(readOnly = true)
     public List<RecommendedEvent> getRecommendationsForUser(long userId, int maxResults) {
-        // Этап 1: Подбор мероприятий
-        List<Long> recentEventIds = getRecentInteractions(userId, DEFAULT_RECENT_INTERACTIONS);
-        if (recentEventIds.isEmpty()) {
+        // Загрузить все взаимодействия пользователя один раз
+        List<UserEventInteraction> allInteractions = userInteractionRepository.findByUserIdOrderByTimestampDesc(userId);
+        
+        if (allInteractions.isEmpty()) {
             return Collections.emptyList();
         }
 
-        // Найти похожие новые мероприятия
-        Set<Long> candidateEventIds = new HashSet<>();
-        Set<Long> interactedEventIds = new HashSet<>(
-                userInteractionRepository.findByUserIdOrderByTimestampDesc(userId).stream()
-                        .map(UserEventInteraction::getEventId)
-                        .toList()
-        );
+        // Этап 1: Подбор мероприятий
+        // Получить N недавних мероприятий (отсортированы по дате DESC)
+        List<Long> recentEventIds = allInteractions.stream()
+                .limit(DEFAULT_RECENT_INTERACTIONS)
+                .map(UserEventInteraction::getEventId)
+                .toList();
 
+        // Множество всех мероприятий, с которыми пользователь взаимодействовал
+        Set<Long> interactedEventIds = allInteractions.stream()
+                .map(UserEventInteraction::getEventId)
+                .collect(Collectors.toSet());
+
+        // Map для быстрого доступа к maxWeight по eventId
+        Map<Long, Double> userRatings = allInteractions.stream()
+                .collect(Collectors.toMap(
+                        UserEventInteraction::getEventId,
+                        UserEventInteraction::getMaxWeight
+                ));
+
+        // Найти похожие новые мероприятия (с которыми пользователь не взаимодействовал)
+        Set<Long> candidateEventIds = new HashSet<>();
         for (Long recentEventId : recentEventIds) {
             List<EventSimilarity> similarities = similarityRepository.findSimilarEvents(recentEventId);
             for (EventSimilarity sim : similarities) {
@@ -51,7 +65,11 @@ public class RecommendationServiceImpl implements RecommendationService {
             }
         }
 
-        // Выбрать N самых похожих
+        if (candidateEventIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // Выбрать N самых похожих по максимальному коэффициенту подобия
         Map<Long, Double> candidateScores = new HashMap<>();
         for (Long candidateId : candidateEventIds) {
             double maxSimilarity = 0.0;
@@ -68,22 +86,15 @@ public class RecommendationServiceImpl implements RecommendationService {
                 .map(Map.Entry::getKey)
                 .toList();
 
-        // Этап 2: Вычисление оценки для каждого мероприятия
+        // Этап 2: Вычисление предсказанной оценки для каждого мероприятия
         List<RecommendedEvent> recommendations = new ArrayList<>();
         for (Long eventId : topCandidates) {
-            double predictedRating = calculatePredictedRating(userId, eventId, DEFAULT_K_NEIGHBORS);
+            double predictedRating = calculatePredictedRating(eventId, interactedEventIds, userRatings, DEFAULT_K_NEIGHBORS);
             recommendations.add(new RecommendedEvent(eventId, predictedRating));
         }
 
         return recommendations.stream()
                 .sorted(Comparator.comparing(RecommendedEvent::score).reversed())
-                .toList();
-    }
-
-    private List<Long> getRecentInteractions(long userId, int limit) {
-        return userInteractionRepository.findByUserIdOrderByTimestampDesc(userId).stream()
-                .limit(limit)
-                .map(UserEventInteraction::getEventId)
                 .toList();
     }
 
@@ -95,16 +106,14 @@ public class RecommendationServiceImpl implements RecommendationService {
                 .orElse(0.0);
     }
 
-    private double calculatePredictedRating(long userId, long eventId, int k) {
+    /**
+     * Вычисляет предсказанную оценку для мероприятия на основе K ближайших соседей.
+     * Использует уже загруженные данные о взаимодействиях пользователя.
+     */
+    private double calculatePredictedRating(long eventId, Set<Long> interactedEventIds, 
+                                            Map<Long, Double> userRatings, int k) {
         // Найти K ближайших соседей среди тех, с которыми пользователь взаимодействовал
         List<EventSimilarity> allSimilarities = similarityRepository.findSimilarEvents(eventId);
-        
-        // Получить все мероприятия, с которыми пользователь взаимодействовал
-        Set<Long> interactedEventIds = new HashSet<>(
-                userInteractionRepository.findByUserIdOrderByTimestampDesc(userId).stream()
-                        .map(UserEventInteraction::getEventId)
-                        .toList()
-        );
 
         // Отфильтровать похожие мероприятия, оставив только те, с которыми пользователь взаимодействовал
         // Отсортировать по коэффициенту подобия DESC и взять первые K
@@ -121,33 +130,16 @@ public class RecommendationServiceImpl implements RecommendationService {
             return 0.0;
         }
 
-        // Получить оценки (максимальные веса) для соседей
-        List<Long> neighborEventIds = neighborSimilarities.stream()
-                .map(sim -> sim.getEventA().equals(eventId) ? sim.getEventB() : sim.getEventA())
-                .toList();
-
-        List<UserEventInteraction> neighborInteractions = userInteractionRepository
-                .findByUserIdAndEventIdIn(userId, neighborEventIds);
-
-        if (neighborInteractions.isEmpty()) {
-            return 0.0;
-        }
-
         // Вычислить сумму взвешенных оценок и сумму коэффициентов подобия
+        // predicted_rating = sum(similarity * rating) / sum(similarity)
         double sumWeightedScores = 0.0;
         double sumSimilarities = 0.0;
 
-        Map<Long, Double> interactionMap = neighborInteractions.stream()
-                .collect(Collectors.toMap(
-                        UserEventInteraction::getEventId,
-                        UserEventInteraction::getMaxWeight
-                ));
-
         for (EventSimilarity sim : neighborSimilarities) {
             long neighborId = sim.getEventA().equals(eventId) ? sim.getEventB() : sim.getEventA();
-            if (interactionMap.containsKey(neighborId)) {
+            Double rating = userRatings.get(neighborId);
+            if (rating != null) {
                 double similarity = sim.getScore();
-                double rating = interactionMap.get(neighborId);
                 sumWeightedScores += similarity * rating;
                 sumSimilarities += similarity;
             }
@@ -163,8 +155,8 @@ public class RecommendationServiceImpl implements RecommendationService {
     @Override
     @Transactional(readOnly = true)
     public List<RecommendedEvent> getSimilarEvents(long eventId, long userId, int maxResults) {
-        // Получить похожие мероприятия
-        List<EventSimilarity> similarities = similarityRepository.findByEventId(eventId);
+        // Получить похожие мероприятия (только с положительным коэффициентом подобия)
+        List<EventSimilarity> similarities = similarityRepository.findSimilarEvents(eventId);
 
         // Получить мероприятия, с которыми пользователь взаимодействовал
         Set<Long> interactedEventIds = new HashSet<>(

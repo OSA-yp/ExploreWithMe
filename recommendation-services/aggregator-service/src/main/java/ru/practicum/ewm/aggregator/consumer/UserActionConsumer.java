@@ -49,12 +49,6 @@ public class UserActionConsumer {
                 long eventA = pair.getFirst();
                 long eventB = pair.getSecond();
                 
-                // Фильтровать: отправлять только пары, где текущий eventId является eventA
-                // (после упорядочивания eventA = min(eventId, otherEventId))
-                if (eventA != eventId) {
-                    continue; // Пропустить пары, где eventId является eventB
-                }
-                
                 double similarity = similarityService.calculateSimilarity(eventA, eventB);
                 
                 if (similarity > 0.0) {
