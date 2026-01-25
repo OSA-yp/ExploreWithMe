@@ -30,8 +30,9 @@ public class UserActionConsumer {
     @KafkaListener(topics = USER_ACTIONS_TOPIC, groupId = "aggregator-group")
     public void consume(UserActionAvro userAction) {
         try {
-            log.debug("Received user action: userId={}, eventId={}, actionType={}",
-                    userAction.getUserId(), userAction.getEventId(), userAction.getActionType());
+            log.info("Received user action from Kafka: userId={}, eventId={}, actionType={}, timestamp={}",
+                    userAction.getUserId(), userAction.getEventId(), userAction.getActionType(),
+                    userAction.getTimestamp());
 
             double actionWeight = actionWeightService.getWeight(userAction.getActionType());
             long eventId = userAction.getEventId();

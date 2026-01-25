@@ -25,13 +25,18 @@ public class UserActionControllerImpl extends UserActionControllerGrpc.UserActio
     @Override
     public void collectUserAction(UserActionProto request, StreamObserver<Empty> responseObserver) {
         try {
-            log.debug("Received user action: userId={}, eventId={}, actionType={}",
-                    request.getUserId(), request.getEventId(), request.getActionType());
+            log.info("Received user action: userId={}, eventId={}, actionType={}, timestamp={}",
+                    request.getUserId(), request.getEventId(), request.getActionType(),
+                    request.getTimestamp());
 
             UserActionAvro avroMessage = converter.convertToAvro(request);
-            kafkaTemplate.send(TOPIC_NAME, request.getEventId(), avroMessage);
+            log.info("Converted to Avro: userId={}, eventId={}, actionType={}, timestamp={}",
+                    avroMessage.getUserId(), avroMessage.getEventId(), avroMessage.getActionType(),
+                    avroMessage.getTimestamp());
 
-            log.debug("User action sent to Kafka: eventId={}", request.getEventId());
+            // Синхронная отправка - ждём пока сообщение будет записано в Kafka
+            kafkaTemplate.send(TOPIC_NAME, request.getEventId(), avroMessage).get();
+            log.info("Sent to Kafka successfully for eventId={}", request.getEventId());
 
             responseObserver.onNext(Empty.getDefaultInstance());
             responseObserver.onCompleted();

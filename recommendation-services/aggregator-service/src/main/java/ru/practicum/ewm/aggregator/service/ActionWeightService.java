@@ -8,9 +8,9 @@ import ru.practicum.ewm.stats.avro.ActionTypeAvro;
 @Service
 public class ActionWeightService {
 
-    private static final double WEIGHT_VIEW = 1.0;
-    private static final double WEIGHT_REGISTER = 2.0;
-    private static final double WEIGHT_LIKE = 3.0;
+    private static final double WEIGHT_VIEW = 0.4;
+    private static final double WEIGHT_REGISTER = 0.8;
+    private static final double WEIGHT_LIKE = 1.0;
 
     public double getWeight(ActionTypeAvro actionType) {
         return switch (actionType) {
