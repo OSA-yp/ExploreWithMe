@@ -97,7 +97,7 @@ public class InternalEventsController {
                             categoriesFinal.get(e.getCategoryId()),
                             usersFinal.get(e.getInitiatorId()),
                             confirmedFinal.getOrDefault(id, 0L),
-                            0L
+                            0.0
                     );
                 })
                 .toList();

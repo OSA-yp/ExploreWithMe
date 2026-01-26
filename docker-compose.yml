@@ -7,6 +7,7 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=8761
+      - SERVER_ADDRESS=0.0.0.0 
       - EUREKA_INSTANCE_HOSTNAME=discovery-server
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider --timeout=3 http://localhost:8761/actuator/health || exit 1"]
@@ -274,3 +275,153 @@ services:
       timeout: 5s
       retries: 5
       start_period: 90s
+
+  kafka:
+    image: confluentinc/confluent-local:7.4.3
+    hostname: kafka
+    container_name: kafka
+    ports:
+      - "9092:9092" # for client connections
+      - "9101:9101" # JMX
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092'
+      CLUSTER_ID: 'K0EA9p0yEe6MkAAAAkKsEg'
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server kafka:29092 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  kafka-init-topics:
+    image: confluentinc/confluent-local:7.4.3
+    container_name: kafka-init-topics
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: "bash -c \
+                'kafka-topics --create --topic stats.user-actions.v1 \
+                             --partitions 1 --replication-factor 1 --if-not-exists \
+                             --bootstrap-server kafka:29092 && \
+                kafka-topics --create --topic stats.events-similarity.v1 \
+                             --partitions 1 --replication-factor 1 --if-not-exists \
+                             --bootstrap-server kafka:29092'"
+    init: true
+
+  collector-service:
+    build:
+      context: .
+      dockerfile: ./recommendation-services/collector-service/Dockerfile
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8090
+      - GRPC_SERVER_PORT=9090
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - EUREKA_SERVER_HOST=discovery-server
+      - EUREKA_SERVER_PORT=8761
+      - EUREKA_INSTANCE_HOSTNAME=collector-service
+    networks:
+      default:
+        aliases:
+          - collector
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8090/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  aggregator-service:
+    build:
+      context: .
+      dockerfile: ./recommendation-services/aggregator-service/Dockerfile
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8091
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - EUREKA_SERVER_HOST=discovery-server
+      - EUREKA_SERVER_PORT=8761
+      - EUREKA_INSTANCE_HOSTNAME=aggregator-service
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8091/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  analyzer-service:
+    build:
+      context: .
+      dockerfile: ./recommendation-services/analyzer-service/Dockerfile
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8092
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - EUREKA_SERVER_HOST=discovery-server
+      - EUREKA_SERVER_PORT=8761
+      - EUREKA_INSTANCE_HOSTNAME=analyzer-service
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8092/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+
+  tester:
+    image: eclipse-temurin:21-jre
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      collector-service:
+        condition: service_healthy
+      aggregator-service:
+        condition: service_healthy
+      analyzer-service:
+        condition: service_healthy
+    volumes:
+      - ./specs/workflows/stuff/tester-0.0.1.jar:/app/tester.jar:ro
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+    environment:
+      - STATS_TEST_MODE=${STATS_TEST_MODE:-ANALYZE}
+      - PRINT_LOGS=${PRINT_LOGS:-false}
+      - VERBOSE_MODE=${VERBOSE_MODE:-false}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+    command: ["sh", "-c", "java -jar /app/tester.jar --tester.execution.mode=$${STATS_TEST_MODE:-ANALYZE} --tester.execution.immediate-logging.enabled=$${PRINT_LOGS:-false} --tester.execution.output.trace-enabled=$${VERBOSE_MODE:-false} --tester.execution.output.print=true --tester.execution.output.file=true --tester.execution.output.file-path=/app/reports/execution-report.txt --eureka.client.serviceUrl.defaultZone=http://discovery-server:8761/eureka/"]
+    working_dir: /app

@@ -18,3 +18,6 @@ WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'ewm_category') \gexec
 
 SELECT format('CREATE DATABASE %I', 'ewm_comment')
 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'ewm_comment') \gexec
+
+SELECT format('CREATE DATABASE %I', 'ewm_analyzer')
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'ewm_analyzer') \gexec

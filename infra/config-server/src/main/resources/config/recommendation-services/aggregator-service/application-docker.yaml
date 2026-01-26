@@ -1,0 +1,36 @@
+server:
+  port: 8091
+
+spring:
+  application:
+    name: aggregator
+  kafka:
+    bootstrap-servers: kafka:29092
+    consumer:
+      group-id: aggregator-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.LongDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.LongSerializer
+      properties:
+        retries: 2147483647
+        retry.backoff.ms: 1000
+        reconnect.backoff.ms: 50
+        reconnect.backoff.max.ms: 1000
+        connections.max.idle.ms: 540000
+        request.timeout.ms: 30000
+        delivery.timeout.ms: 120000
+        max.block.ms: 60000
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://discovery-server:8761/eureka/
+  instance:
+    hostname: aggregator-service
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

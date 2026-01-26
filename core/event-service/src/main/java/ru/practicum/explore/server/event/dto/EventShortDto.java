@@ -40,6 +40,6 @@ public class EventShortDto {
     private long confirmedRequests;
 
     @PositiveOrZero
-    private long views;
+    private Double rating;
 }
 

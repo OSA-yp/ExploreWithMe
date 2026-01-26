@@ -7,7 +7,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
-@SpringBootApplication(scanBasePackages = "ru.practicum.explore")
+@SpringBootApplication(scanBasePackages = {"ru.practicum.explore", "ru.practicum"})
 @EnableDiscoveryClient
 @EnableFeignClients(basePackages = "ru.practicum.explore.server")
 @EntityScan(basePackages = "ru.practicum.explore.server")

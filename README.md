@@ -397,6 +397,7 @@ _______________________________________________________
 - **Discovery**: `discovery-server` (Eureka, порт **8761**)
 - **Config**: `config-server` (порт **8888**, native-конфиги из репозитория)
 - **Stats**: `stats-server` (порт **9090**)
+- **Kafka**: `kafka` (порт **9092** для клиентов, **9101** для JMX)
 
 ### Доменные сервисы
 
@@ -409,6 +410,16 @@ _______________________________________________________
 - `core/compilation-service` — подборки (`/admin/compilations/**`, `/compilations/**`)
 - `core/comment-service` — комментарии (см. раздел выше)
 
+### Рекомендательные сервисы
+
+Рекомендательные сервисы расположены в модуле `recommendation-services/`:
+
+- `recommendation-services/collector-service` — сбор действий пользователей через gRPC и отправка в Kafka
+- `recommendation-services/aggregator-service` — вычисление косинусного сходства мероприятий на основе действий пользователей
+- `recommendation-services/analyzer-service` — предоставление рекомендаций через gRPC API
+- `recommendation-services/common-proto` — общие Protobuf схемы для gRPC
+- `recommendation-services/common-avro` — общие Avro схемы для Kafka
+
 ### Где лежат конфигурации
 
 ConfigServer берёт конфиги из:
@@ -416,6 +427,7 @@ ConfigServer берёт конфиги из:
 - `infra/config-server/src/main/resources/config/infra/*` — инфраструктура (в т.ч. маршруты Gateway)
 - `infra/config-server/src/main/resources/config/core/*` — доменные сервисы
 - `infra/config-server/src/main/resources/config/stats-server/*` — статистика
+- `infra/config-server/src/main/resources/config/recommendation-services/*` — рекомендательные сервисы
 
 Маршрутизация внешнего API через Gateway описана в:
 
@@ -429,6 +441,35 @@ ConfigServer берёт конфиги из:
 - `GET /internal/categories/{catId}`, `GET /internal/categories?ids=...`
 - `GET /internal/events/{eventId}`, `GET /internal/events/short?ids=...`, `GET /internal/events/exists-by-category?categoryId=...`
 - `GET /internal/requests/confirmed-count?eventIds=...`
+
+### Новые эндпоинты (этап 3-2: Рекомендательный сервис)
+
+#### GET /events/recommendations
+
+Получение рекомендаций мероприятий для пользователя на основе его истории взаимодействий.
+
+**HEADERS:**
+- `X-EWM-USER-ID` (required) - id пользователя
+
+**QUERY PARAMETERS:**
+- `size` (integer, Default: 10) - количество рекомендаций
+
+**Ответ:** Список `EventShortDto` с полем `rating` вместо `views`
+
+#### PUT /events/{eventId}/like
+
+Поставить лайк мероприятию. Пользователь должен предварительно просмотреть мероприятие.
+
+**HEADERS:**
+- `X-EWM-USER-ID` (required) - id пользователя
+
+**PATH PARAMETERS:**
+- `eventId` (required) - id мероприятия
+
+**Статусы ответов:**
+- 200 - Лайк успешно поставлен
+- 400 - Пользователь должен просмотреть мероприятие перед тем, как поставить лайк
+- 404 - Событие не найдено
 
 ## Запуск локально (docker compose)
 
@@ -450,5 +491,10 @@ docker compose up --build
 - Eureka: `http://localhost:8761`
 - ConfigServer: `http://localhost:8888`
 - Stats: `http://localhost:9090`
+- Kafka: `localhost:9092`
+
+### Изменения в модели данных
+
+В этапе 3-2 поле `views` (Long) в `EventShortDto` и `EventFullDto` заменено на `rating` (Double). Рейтинг рассчитывается как сумма максимальных весов взаимодействий всех пользователей с мероприятием через сервис Analyzer.
 
 Примечание: в этой ветке запуск рассчитан на микросервисную архитектуру (маршрутизация через Gateway + обнаружение сервисов через Eureka).

@@ -11,6 +11,7 @@ spring:
             - classpath:config/core/{application}
             - classpath:config/stats-server/{application}
             - classpath:config/infra/{application}
+            - classpath:config/recommendation-services/{application}
 server:
   port: ${SERVER_PORT:8888}
 

@@ -8,9 +8,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import ru.practicum.StatsClient;
-import ru.practicum.explore.dto.ViewStatsDto;
-import ru.practicum.explore.dto.ViewsStatsRequest;
+import ru.practicum.AnalyzerClient;
+import ru.practicum.ewm.stats.proto.RecommendedEventProto;
 import ru.practicum.explore.server.category.client.CategoryInternalClient;
 import ru.practicum.explore.server.category.dto.CategoryResponseDto;
 import ru.practicum.explore.server.event.dto.EventFullDto;
@@ -52,7 +51,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
     private final CategoryInternalClient categoryInternalClient;
     private final UserInternalClient userInternalClient;
     private final RequestInternalClient requestInternalClient;
-    private final DiscoveryClient discoveryClient;
+    private final AnalyzerClient analyzerClient;
 
     @Override
     public EventFullDto createEvent(Long userId, NewEventDto newEventDto) {
@@ -75,7 +74,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         Event saved = eventRepository.save(event);
         log.info("Event with id={} was created", saved.getId());
 
-        return EventMapper.toEventFullDto(saved, category, initiator, 0L, 0L);
+        return EventMapper.toEventFullDto(saved, category, initiator, 0L, 0.0);
     }
 
     @Override
@@ -112,11 +111,11 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         Event updated = eventRepository.save(event);
 
         long confirmed = safeConfirmed(updated.getId());
-        long views = safeViews(updated);
+        Double rating = safeRating(updated.getId());
         CategoryResponseDto category = safeCategory(updated.getCategoryId());
         UserShortDto initiator = safeUser(updated.getInitiatorId());
 
-        return EventMapper.toEventFullDto(updated, category, initiator, confirmed, views);
+        return EventMapper.toEventFullDto(updated, category, initiator, confirmed, rating);
     }
 
     @Override
@@ -131,8 +130,9 @@ public class PrivateEventServiceImpl implements PrivateEventService {
             return List.of();
         }
 
-        Map<Long, Long> confirmed = safeConfirmedCounts(events.stream().map(Event::getId).toList());
-        Map<String, Long> views = safeViewsMap(events);
+        List<Long> eventIds = events.stream().map(Event::getId).toList();
+        Map<Long, Long> confirmed = safeConfirmedCounts(eventIds);
+        Map<Long, Double> ratings = safeRatingsMap(eventIds);
 
         Set<Long> categoryIds = events.stream().map(Event::getCategoryId).collect(Collectors.toSet());
         Map<Long, CategoryResponseDto> categories;
@@ -147,7 +147,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         UserShortDto initiator = safeUser(userId);
         final Map<Long, CategoryResponseDto> categoriesFinal = categories;
         final Map<Long, Long> confirmedFinal = confirmed;
-        final Map<String, Long> viewsFinal = views;
+        final Map<Long, Double> ratingsFinal = ratings;
 
         return events.stream()
                 .map(e -> EventMapper.toEventShortDto(
@@ -155,7 +155,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
                         categoriesFinal.get(e.getCategoryId()),
                         initiator,
                         confirmedFinal.getOrDefault(e.getId(), 0L),
-                        viewsFinal.getOrDefault("/events/" + e.getId(), 0L)
+                        ratingsFinal.getOrDefault(e.getId(), 0.0)
                 ))
                 .toList();
     }
@@ -167,11 +167,11 @@ public class PrivateEventServiceImpl implements PrivateEventService {
                         "Событие с id=" + eventId + " не найдено или не принадлежит пользователю id=" + userId));
 
         long confirmed = safeConfirmed(eventId);
-        long views = safeViews(event);
+        Double rating = safeRating(eventId);
         CategoryResponseDto category = safeCategory(event.getCategoryId());
         UserShortDto initiator = safeUser(event.getInitiatorId());
 
-        return EventMapper.toEventFullDto(event, category, initiator, confirmed, views);
+        return EventMapper.toEventFullDto(event, category, initiator, confirmed, rating);
     }
 
     private Event getEventByIdAndCheckUser(Long eventId, Long userId) {
@@ -215,35 +215,27 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         }
     }
 
-    private long safeViews(Event event) {
-        if (event.getPublishedOn() == null) {
-            return 0L;
-        }
+    private Double safeRating(Long eventId) {
         try {
-            StatsClient statsClient = new StatsClient(discoveryClient, "stats-server");
-            ViewsStatsRequest statsRequest = ViewsStatsRequest.builder()
-                    .uri("/events/" + event.getId())
-                    .start(event.getPublishedOn())
-                    .end(LocalDateTime.now())
-                    .unique(true)
-                    .build();
-            List<ViewStatsDto> stats = statsClient.getStats(List.of(statsRequest));
-            return stats.isEmpty() ? 0L : stats.getFirst().getHits();
+            return analyzerClient.getInteractionsCount(List.of(eventId))
+                    .findFirst()
+                    .map(RecommendedEventProto::getScore)
+                    .orElse(0.0);
         } catch (Exception e) {
-            return 0L;
+            log.warn("Не удалось получить rating из analyzer, возвращаем 0.0. {}", e.getMessage());
+            return 0.0;
         }
     }
 
-    private Map<String, Long> safeViewsMap(List<Event> events) {
+    private Map<Long, Double> safeRatingsMap(List<Long> eventIds) {
         try {
-            StatsClient statsClient = new StatsClient(discoveryClient, "stats-server");
-            var statsRequest = ViewsStatsRequest.builder()
-                    .uris(events.stream().map(e -> "/events/" + e.getId()).collect(Collectors.toSet()))
-                    .unique(true)
-                    .build();
-            List<ViewStatsDto> stats = statsClient.getStats(List.of(statsRequest));
-            return stats.stream().collect(Collectors.toMap(ViewStatsDto::getUri, ViewStatsDto::getHits));
+            return analyzerClient.getInteractionsCount(eventIds)
+                    .collect(Collectors.toMap(
+                            RecommendedEventProto::getEventId,
+                            RecommendedEventProto::getScore
+                    ));
         } catch (Exception e) {
+            log.warn("Не удалось получить ratings map из analyzer, возвращаем 0.0. {}", e.getMessage());
             return Map.of();
         }
     }

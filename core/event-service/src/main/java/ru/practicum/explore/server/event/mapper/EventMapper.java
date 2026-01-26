@@ -37,7 +37,7 @@ public class EventMapper {
                                                CategoryResponseDto category,
                                                UserShortDto initiator,
                                                long confirmedRequests,
-                                               long views) {
+                                               Double rating) {
         EventShortDto dto = new EventShortDto();
         dto.setId(event.getId());
         dto.setAnnotation(event.getAnnotation());
@@ -47,7 +47,7 @@ public class EventMapper {
         dto.setPaid(event.isPaid());
         dto.setTitle(event.getTitle());
         dto.setConfirmedRequests(confirmedRequests);
-        dto.setViews(views);
+        dto.setRating(rating);
         return dto;
     }
 
@@ -55,7 +55,7 @@ public class EventMapper {
                                              CategoryResponseDto category,
                                              UserShortDto initiator,
                                              long confirmedRequests,
-                                             long views) {
+                                             Double rating) {
         EventFullDto dto = new EventFullDto();
         dto.setId(event.getId());
         dto.setAnnotation(event.getAnnotation());
@@ -65,7 +65,7 @@ public class EventMapper {
         dto.setPaid(event.isPaid());
         dto.setTitle(event.getTitle());
         dto.setConfirmedRequests(confirmedRequests);
-        dto.setViews(views);
+        dto.setRating(rating);
 
         dto.setCreatedOn(event.getCreatedOn());
         dto.setDescription(event.getDescription());

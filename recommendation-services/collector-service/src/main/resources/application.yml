@@ -1,0 +1,50 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: collector
+  config:
+    import: "optional:configserver:"
+  cloud:
+    config:
+      fail-fast: false
+      retry:
+        useRandomPolicy: true
+        initial-interval: 1000
+        max-interval: 30000
+        multiplier: 1.5
+        max-attempts: 0
+      discovery:
+        enabled: true
+        serviceId: config-server
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.LongSerializer
+      properties:
+        retries: 2147483647
+        retry.backoff.ms: 1000
+        reconnect.backoff.ms: 50
+        reconnect.backoff.max.ms: 1000
+        connections.max.idle.ms: 540000
+        request.timeout.ms: 30000
+        delivery.timeout.ms: 120000
+        max.block.ms: 60000
+
+grpc:
+  server:
+    port: 0
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://discovery-server:8761/eureka/
+  instance:
+    hostname: localhost
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -86,11 +86,25 @@ spring:
           predicates:
             - Path=/users/*/events/**
 
+        - id: event_service_recommendations
+          uri: lb://event-service
+          order: -47
+          predicates:
+            - Path=/events/recommendations
+
+        - id: event_service_like
+          uri: lb://event-service
+          order: -46
+          predicates:
+            - Path=/events/*/like
+
         - id: event_service_public_events
           uri: lb://event-service
           order: -48
           predicates:
             - Path=/events/**
+          filters:
+            - PreserveHostHeader
 
 server:
   port: 8080
